@@ -276,7 +276,7 @@ public class CarbonFactDataWriterImplV2 extends CarbonFactDataWriterImplV1 {
           .convertFilterFooter2(blockletInfoList, localCardinality, thriftColumnSchemaList,
               dataChunksOffsets, dataChunksLength);
       // fill the carbon index details
-      fillBlockIndexInfoDetails(convertFileMeta.getNum_rows(), carbonDataFileName, currentPosition);
+      fillBlockIndexInfoDetails(convertFileMeta.getNum_rows(), filePath, currentPosition);
       // write the footer
       writer.writeFooter(convertFileMeta, currentPosition);
     } catch (IOException e) {

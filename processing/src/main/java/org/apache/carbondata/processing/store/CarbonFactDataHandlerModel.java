@@ -171,6 +171,11 @@ public class CarbonFactDataHandlerModel {
    */
   private boolean isCompactionFlow;
 
+  /**
+   * To use kettle flow to load or not.
+   */
+  private boolean useKettle = true;
+
   private int bucketId = 0;
 
   private String segmentId;
@@ -180,16 +185,13 @@ public class CarbonFactDataHandlerModel {
    */
   private long schemaUpdatedTimeStamp;
 
-  private int taskExtension;
-
   /**
    * Create the model using @{@link CarbonDataLoadConfiguration}
    * @param configuration
    * @return CarbonFactDataHandlerModel
    */
   public static CarbonFactDataHandlerModel createCarbonFactDataHandlerModel(
-      CarbonDataLoadConfiguration configuration, String storeLocation, int bucketId,
-      int taskExtension) {
+      CarbonDataLoadConfiguration configuration, String storeLocation, int bucketId) {
 
     CarbonTableIdentifier identifier =
         configuration.getTableIdentifier().getCarbonTableIdentifier();
@@ -198,7 +200,8 @@ public class CarbonFactDataHandlerModel {
     boolean[] isUseInvertedIndex =
         CarbonDataProcessorUtil.getIsUseInvertedIndex(configuration.getDataFields());
 
-    int[] dimLensWithComplex = configuration.getCardinalityFinder().getCardinality();
+    int[] dimLensWithComplex =
+        (int[]) configuration.getDataLoadProperty(DataLoadProcessorConstants.DIMENSION_LENGTHS);
     List<Integer> dimsLenList = new ArrayList<Integer>();
     for (int eachDimLen : dimLensWithComplex) {
       if (eachDimLen != 0) dimsLenList.add(eachDimLen);
@@ -282,6 +285,7 @@ public class CarbonFactDataHandlerModel {
     carbonFactDataHandlerModel.setCarbonDataDirectoryPath(carbonDataDirectoryPath);
     carbonFactDataHandlerModel.setIsUseInvertedIndex(isUseInvertedIndex);
     carbonFactDataHandlerModel.setBlockSizeInMB(carbonTable.getBlockSizeInMB());
+    carbonFactDataHandlerModel.setUseKettle(false);
     if (noDictionaryCount > 0 || complexDimensionCount > 0) {
       carbonFactDataHandlerModel.setMdKeyIndex(measureCount + 1);
     } else {
@@ -289,7 +293,6 @@ public class CarbonFactDataHandlerModel {
     }
     carbonFactDataHandlerModel.bucketId = bucketId;
     carbonFactDataHandlerModel.segmentId = configuration.getSegmentId();
-    carbonFactDataHandlerModel.taskExtension = taskExtension;
     return carbonFactDataHandlerModel;
   }
 
@@ -494,6 +497,14 @@ public class CarbonFactDataHandlerModel {
     this.wrapperColumnSchema = wrapperColumnSchema;
   }
 
+  public boolean isUseKettle() {
+    return useKettle;
+  }
+
+  public void setUseKettle(boolean useKettle) {
+    this.useKettle = useKettle;
+  }
+
   public int getBucketId() {
     return bucketId;
   }
@@ -512,10 +523,6 @@ public class CarbonFactDataHandlerModel {
 
   public void setSegmentId(String segmentId) {
     this.segmentId = segmentId;
-  }
-
-  public int getTaskExtension() {
-    return taskExtension;
   }
 }
 

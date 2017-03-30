@@ -38,6 +38,7 @@ object SparkTestQueryExecutor {
   private val LOGGER = LogServiceFactory.getLogService(this.getClass.getCanonicalName)
   LOGGER.info("use TestQueryExecutorImplV1")
   CarbonProperties.getInstance()
+    .addProperty("carbon.kettle.home", TestQueryExecutor.kettleHome)
     .addProperty(CarbonCommonConstants.CARBON_TIMESTAMP_FORMAT, TestQueryExecutor.timestampFormat)
     .addProperty(CarbonCommonConstants.STORE_LOCATION_TEMP_PATH,
       System.getProperty("java.io.tmpdir"))
@@ -46,7 +47,8 @@ object SparkTestQueryExecutor {
   val sc = new SparkContext(new SparkConf()
     .setAppName("CarbonSpark")
     .setMaster("local[2]")
-    .set("spark.sql.shuffle.partitions", "20"))
+    .set("spark.sql.shuffle.partitions", "20")
+    .set("use_kettle_default", "true"))
   sc.setLogLevel("ERROR")
 
   val cc = new CarbonContext(sc, TestQueryExecutor.storeLocation, TestQueryExecutor.metastoredb)

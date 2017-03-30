@@ -39,10 +39,17 @@ class DateDataTypeDirectDictionaryTest extends QueryTest with BeforeAndAfterAll 
     try {
       CarbonProperties.getInstance().addProperty("carbon.direct.dictionary", "true")
       sql("drop table if exists directDictionaryTable ")
+      sql("drop table if exists directDictionaryTable_hive ")
       sql(
         "CREATE TABLE if not exists directDictionaryTable (empno int,doj date, " +
           "salary int) " +
           "STORED BY 'org.apache.carbondata.format'"
+      )
+
+      sql(
+        "CREATE TABLE if not exists directDictionaryTable_hive (empno int,doj date, " +
+          "salary int) " +
+          "row format delimited fields terminated by ','"
       )
 
       CarbonProperties.getInstance()
@@ -50,6 +57,7 @@ class DateDataTypeDirectDictionaryTest extends QueryTest with BeforeAndAfterAll 
       val csvFilePath = s"$resourcesPath/datasamplefordate.csv"
       sql("LOAD DATA local inpath '" + csvFilePath + "' INTO TABLE directDictionaryTable OPTIONS" +
         "('DELIMITER'= ',', 'QUOTECHAR'= '\"')" )
+      sql("LOAD DATA local inpath '" + csvFilePath + "' INTO TABLE directDictionaryTable_hive")
     } catch {
       case x: Throwable =>
         x.printStackTrace()
@@ -79,7 +87,7 @@ class DateDataTypeDirectDictionaryTest extends QueryTest with BeforeAndAfterAll 
 
   test("test direct dictionary for not equals condition") {
     checkAnswer(
-      sql("select doj from directDictionaryTable where doj != '2016-04-14'"),
+      sql("select doj from directDictionaryTable where doj != '2016-04-14 00:00:00'"),
       Seq(Row(Date.valueOf("2016-03-14"))
       )
     )
@@ -95,7 +103,7 @@ class DateDataTypeDirectDictionaryTest extends QueryTest with BeforeAndAfterAll 
 
   test("select doj from directDictionaryTable with equals filter") {
     checkAnswer(
-      sql("select doj from directDictionaryTable where doj = '2016-03-14'"),
+      sql("select doj from directDictionaryTable where doj = '2016-03-14 00:00:00'"),
       Seq(Row(Date.valueOf("2016-03-14")))
     )
 
@@ -111,7 +119,7 @@ class DateDataTypeDirectDictionaryTest extends QueryTest with BeforeAndAfterAll 
   test("select doj from directDictionaryTable with regexp_replace NOT IN filter") {
     checkAnswer(
       sql("select doj from directDictionaryTable where regexp_replace(doj, '-', '/') NOT IN ('2016/03/14')"),
-      Seq(Row(Date.valueOf("2016-04-14")))
+      sql("select doj from directDictionaryTable_hive where regexp_replace(doj, '-', '/') NOT IN ('2016/03/14')")
     )
   }
 
@@ -131,6 +139,7 @@ class DateDataTypeDirectDictionaryTest extends QueryTest with BeforeAndAfterAll 
 
   override def afterAll {
     sql("drop table directDictionaryTable")
+    sql("drop table directDictionaryTable_hive")
     CarbonProperties.getInstance()
       .addProperty(CarbonCommonConstants.CARBON_DATE_FORMAT, "dd-MM-yyyy")
     CarbonProperties.getInstance().addProperty("carbon.direct.dictionary", "false")

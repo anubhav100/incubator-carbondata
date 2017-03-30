@@ -182,13 +182,9 @@ class CarbonLateDecodeRule extends Rule[LogicalPlan] with PredicateHelper {
           if !union.children.exists(_.isInstanceOf[CarbonDictionaryTempDecoder]) =>
           val children = union.children.map { child =>
             val condAttrs = new util.HashSet[AttributeReferenceWrapper]
-            val localAliasMap = CarbonAliasDecoderRelation()
-            // collect alias information for the child plan again. It is required as global alias
-            // may have duplicated in case of aliases
-            collectInformationOnAttributes(child, localAliasMap)
             child.output.foreach(attr =>
-              if (isDictionaryEncoded(attr, attrMap, localAliasMap)) {
-                condAttrs.add(AttributeReferenceWrapper(localAliasMap.getOrElse(attr, attr)))
+              if (isDictionaryEncoded(attr, attrMap, aliasMap)) {
+                condAttrs.add(AttributeReferenceWrapper(aliasMap.getOrElse(attr, attr)))
               }
             )
 
@@ -196,7 +192,7 @@ class CarbonLateDecodeRule extends Rule[LogicalPlan] with PredicateHelper {
               !child.isInstanceOf[CarbonDictionaryCatalystDecoder]) {
               CarbonDictionaryTempDecoder(condAttrs,
                 new util.HashSet[AttributeReferenceWrapper](),
-                child, false, Some(localAliasMap))
+                child)
             } else {
               child
             }
@@ -476,18 +472,16 @@ class CarbonLateDecodeRule extends Rule[LogicalPlan] with PredicateHelper {
   }
 
   private def updateTempDecoder(plan: LogicalPlan,
-      aliasMapOriginal: CarbonAliasDecoderRelation,
+      aliasMap: CarbonAliasDecoderRelation,
       attrMap: java.util.HashMap[AttributeReferenceWrapper, CarbonDecoderRelation]):
   LogicalPlan = {
     var allAttrsNotDecode: util.Set[AttributeReferenceWrapper] =
       new util.HashSet[AttributeReferenceWrapper]()
     val marker = new CarbonPlanMarker
-    var aliasMap: CarbonAliasDecoderRelation = aliasMapOriginal
     plan transformDown {
       case cd: CarbonDictionaryTempDecoder if !cd.processed =>
         cd.processed = true
         allAttrsNotDecode = cd.attrsNotDecode
-        aliasMap = cd.aliasMap.getOrElse(aliasMapOriginal)
         marker.pushMarker(allAttrsNotDecode)
         if (cd.isOuter) {
           CarbonDictionaryCatalystDecoder(relations,

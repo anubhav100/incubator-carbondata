@@ -24,7 +24,6 @@ import java.util.Map;
 
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier;
 import org.apache.carbondata.core.metadata.schema.BucketingInfo;
-import org.apache.carbondata.processing.newflow.converter.DictionaryCardinalityFinder;
 
 public class CarbonDataLoadConfiguration {
 
@@ -73,8 +72,6 @@ public class CarbonDataLoadConfiguration {
    * schema updated time stamp to be used for restructure scenarios
    */
   private long schemaUpdatedTimeStamp;
-
-  private DictionaryCardinalityFinder cardinalityFinder;
 
   public CarbonDataLoadConfiguration() {
   }
@@ -247,13 +244,5 @@ public class CarbonDataLoadConfiguration {
 
   public void setSchemaUpdatedTimeStamp(long schemaUpdatedTimeStamp) {
     this.schemaUpdatedTimeStamp = schemaUpdatedTimeStamp;
-  }
-
-  public DictionaryCardinalityFinder getCardinalityFinder() {
-    return cardinalityFinder;
-  }
-
-  public void setCardinalityFinder(DictionaryCardinalityFinder cardinalityFinder) {
-    this.cardinalityFinder = cardinalityFinder;
   }
 }

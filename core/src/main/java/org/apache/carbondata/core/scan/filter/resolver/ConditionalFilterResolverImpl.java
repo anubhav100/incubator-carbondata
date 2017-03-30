@@ -30,7 +30,6 @@ import org.apache.carbondata.core.scan.expression.Expression;
 import org.apache.carbondata.core.scan.expression.conditional.BinaryConditionalExpression;
 import org.apache.carbondata.core.scan.expression.conditional.ConditionalExpression;
 import org.apache.carbondata.core.scan.expression.exception.FilterUnsupportedException;
-import org.apache.carbondata.core.scan.expression.logical.RangeExpression;
 import org.apache.carbondata.core.scan.filter.FilterUtil;
 import org.apache.carbondata.core.scan.filter.intf.FilterExecuterType;
 import org.apache.carbondata.core.scan.filter.resolver.metadata.FilterResolverMetadata;
@@ -44,18 +43,14 @@ public class ConditionalFilterResolverImpl implements FilterResolverIntf {
   protected boolean isExpressionResolve;
   protected boolean isIncludeFilter;
   private DimColumnResolvedFilterInfo dimColResolvedFilterInfo;
-  private AbsoluteTableIdentifier tableIdentifier;
 
   public ConditionalFilterResolverImpl(Expression exp, boolean isExpressionResolve,
-      boolean isIncludeFilter, AbsoluteTableIdentifier tableIdentifier) {
+      boolean isIncludeFilter) {
     this.exp = exp;
     this.isExpressionResolve = isExpressionResolve;
     this.isIncludeFilter = isIncludeFilter;
-    this.tableIdentifier = tableIdentifier;
     this.dimColResolvedFilterInfo = new DimColumnResolvedFilterInfo();
-
   }
-
 
   /**
    * This API will resolve the filter expression and generates the
@@ -97,7 +92,7 @@ public class ConditionalFilterResolverImpl implements FilterResolverIntf {
           //the visitable instance as per its buisness logic which is different for all the
           // visitors.
           dimColResolvedFilterInfo.populateFilterInfoBasedOnColumnType(
-              FilterInfoTypeVisitorFactory.getResolvedFilterInfoVisitor(columnExpression, exp),
+              FilterInfoTypeVisitorFactory.getResolvedFilterInfoVisitor(columnExpression),
               metadata);
         }
       } else if (rightExp instanceof ColumnExpression) {
@@ -120,7 +115,7 @@ public class ConditionalFilterResolverImpl implements FilterResolverIntf {
           } else {
 
             dimColResolvedFilterInfo.populateFilterInfoBasedOnColumnType(
-                FilterInfoTypeVisitorFactory.getResolvedFilterInfoVisitor(columnExpression, exp),
+                FilterInfoTypeVisitorFactory.getResolvedFilterInfoVisitor(columnExpression),
                 metadata);
 
           }
@@ -135,12 +130,10 @@ public class ConditionalFilterResolverImpl implements FilterResolverIntf {
       metadata.setColumnExpression(columnList.get(0));
       metadata.setExpression(exp);
       metadata.setIncludeFilter(isIncludeFilter);
-      if (!columnList.get(0).getDimension().hasEncoding(Encoding.DICTIONARY) || columnList.get(0)
-          .getDimension().hasEncoding(Encoding.DIRECT_DICTIONARY)
-          || (exp instanceof RangeExpression)) {
+      if (!columnList.get(0).getDimension().hasEncoding(Encoding.DICTIONARY)
+              || columnList.get(0).getDimension().hasEncoding(Encoding.DIRECT_DICTIONARY)) {
         dimColResolvedFilterInfo.populateFilterInfoBasedOnColumnType(
-            FilterInfoTypeVisitorFactory.getResolvedFilterInfoVisitor(columnList.get(0), exp),
-            metadata);
+            FilterInfoTypeVisitorFactory.getResolvedFilterInfoVisitor(columnList.get(0)), metadata);
 
       } else if (columnList.get(0).getDimension().hasEncoding(Encoding.DICTIONARY) && !(
           columnList.get(0).getDimension().getDataType()
@@ -189,10 +182,6 @@ public class ConditionalFilterResolverImpl implements FilterResolverIntf {
     return dimColResolvedFilterInfo;
   }
 
-  public AbsoluteTableIdentifier getTableIdentifier() {
-    return tableIdentifier;
-  }
-
   /**
    * method will calculates the start key based on the filter surrogates
    */
@@ -226,54 +215,12 @@ public class ConditionalFilterResolverImpl implements FilterResolverIntf {
       case NOT_EQUALS:
       case NOT_IN:
         return FilterExecuterType.EXCLUDE;
-      case RANGE:
-        if (isColDictionary()) {
-          return FilterExecuterType.INCLUDE;
-        } else {
-          return FilterExecuterType.RANGE;
-        }
+
       default:
         return FilterExecuterType.INCLUDE;
     }
 
   }
-
-  private boolean isColDictionary() {
-    RangeExpression condExp = (RangeExpression) exp;
-    List<ColumnExpression> columnList = condExp.getColumnList();
-    if (columnList.get(0).getDimension().hasEncoding(Encoding.DICTIONARY)) {
-      if (columnList.get(0).getDimension().hasEncoding(Encoding.DIRECT_DICTIONARY)) {
-        return false;
-      } else {
-        return true;
-      }
-    } else {
-      return false;
-    }
-  }
-
-  /**
-   * This method will return the filter values which is present in the range level
-   * conditional expressions.
-   *
-   * @return
-   */
-  public byte[][] getFilterRangeValues(SegmentProperties segmentProperties) {
-
-    if (null != dimColResolvedFilterInfo.getFilterValues() && !dimColResolvedFilterInfo
-        .getDimension().hasEncoding(Encoding.DICTIONARY)) {
-      List<byte[]> noDictFilterValuesList =
-          dimColResolvedFilterInfo.getFilterValues().getNoDictionaryFilterValuesList();
-      return noDictFilterValuesList.toArray((new byte[noDictFilterValuesList.size()][]));
-    } else if (null != dimColResolvedFilterInfo.getFilterValues() && dimColResolvedFilterInfo
-        .getDimension().hasEncoding(Encoding.DIRECT_DICTIONARY)) {
-      return FilterUtil.getKeyArray(this.dimColResolvedFilterInfo.getFilterValues(),
-          this.dimColResolvedFilterInfo.getDimension(), segmentProperties);
-    }
-    return null;
-
-  }
-
 
   @Override public Expression getFilterExpression() {
     // TODO Auto-generated method stub

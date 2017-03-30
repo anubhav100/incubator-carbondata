@@ -24,7 +24,7 @@ import java.io.IOException;
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
 import org.apache.carbondata.core.util.CarbonUtil;
 import org.apache.carbondata.processing.sortandgroupby.exception.CarbonSortKeyAndGroupByException;
-import org.apache.carbondata.processing.util.NonDictionaryUtil;
+import org.apache.carbondata.processing.util.RemoveDictionaryUtil;
 
 public class UnCompressedTempSortFileWriter extends AbstractTempSortFileWriter {
 
@@ -49,12 +49,12 @@ public class UnCompressedTempSortFileWriter extends AbstractTempSortFileWriter {
       int fieldIndex = 0;
 
       for (int counter = 0; counter < dimensionCount; counter++) {
-        dataOutputStream.writeInt((Integer) NonDictionaryUtil.getDimension(fieldIndex++, row));
+        dataOutputStream.writeInt((Integer) RemoveDictionaryUtil.getDimension(fieldIndex++, row));
       }
 
       //write byte[] of high card dims
       if (noDictionaryCount > 0) {
-        dataOutputStream.write(NonDictionaryUtil.getByteArrayForNoDictionaryCols(row));
+        dataOutputStream.write(RemoveDictionaryUtil.getByteArrayForNoDictionaryCols(row));
       }
       fieldIndex = 0;
       for (int counter = 0; counter < complexDimensionCount; counter++) {
@@ -66,7 +66,7 @@ public class UnCompressedTempSortFileWriter extends AbstractTempSortFileWriter {
       for (int counter = 0; counter < measureCount; counter++) {
         if (null != row[fieldIndex]) {
           dataOutputStream.write((byte) 1);
-          dataOutputStream.writeDouble((Double) NonDictionaryUtil.getMeasure(fieldIndex, row));
+          dataOutputStream.writeDouble((Double) RemoveDictionaryUtil.getMeasure(fieldIndex, row));
         } else {
           dataOutputStream.write((byte) 0);
         }

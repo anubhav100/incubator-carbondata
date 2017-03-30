@@ -66,11 +66,10 @@ public class UnsafeCarbonRowPage {
     sizeToBeUsed = dataBlock.size() - (dataBlock.size() * 5) / 100;
   }
 
-  public int addRow(Object[] row) {
+  public void addRow(Object[] row) {
     int size = addRow(row, dataBlock.getBaseOffset() + lastSize);
     buffer.set(lastSize);
     lastSize = lastSize + size;
-    return size;
   }
 
   private int addRow(Object[] row, long address) {

@@ -24,7 +24,7 @@ import org.apache.carbondata.processing.newflow.row.CarbonRow;
 /**
  * convert the row
  */
-public interface RowConverter extends DictionaryCardinalityFinder {
+public interface RowConverter {
 
   void initialize() throws IOException;
 

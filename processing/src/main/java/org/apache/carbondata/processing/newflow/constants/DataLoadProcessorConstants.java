@@ -22,9 +22,17 @@ package org.apache.carbondata.processing.newflow.constants;
  */
 public final class DataLoadProcessorConstants {
 
+  public static final String TEMP_STORE_LOCATION = "TEMP_STORE_LOCATION";
+
+  public static final String BLOCKLET_SIZE = "BLOCKLET_SIZE";
+
+  public static final String SORT_SIZE = "SORT_SIZE";
+
   public static final String FACT_TIME_STAMP = "FACT_TIME_STAMP";
 
   public static final String COMPLEX_DELIMITERS = "COMPLEX_DELIMITERS";
+
+  public static final String DIMENSION_LENGTHS = "DIMENSION_LENGTHS";
 
   public static final String SERIALIZATION_NULL_FORMAT = "SERIALIZATION_NULL_FORMAT";
 

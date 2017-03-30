@@ -30,7 +30,6 @@ import org.apache.carbondata.processing.newflow.row.CarbonRowBatch;
 import org.apache.carbondata.processing.newflow.sort.Sorter;
 import org.apache.carbondata.processing.newflow.sort.impl.ParallelReadMergeSorterImpl;
 import org.apache.carbondata.processing.newflow.sort.impl.ParallelReadMergeSorterWithBucketingImpl;
-import org.apache.carbondata.processing.newflow.sort.impl.UnsafeBatchParallelReadMergeSorterImpl;
 import org.apache.carbondata.processing.newflow.sort.impl.UnsafeParallelReadMergeSorterImpl;
 import org.apache.carbondata.processing.sortandgroupby.sortdata.SortParameters;
 
@@ -59,12 +58,7 @@ public class SortProcessorStepImpl extends AbstractDataLoadProcessorStep {
     boolean offheapsort = Boolean.parseBoolean(CarbonProperties.getInstance()
         .getProperty(CarbonCommonConstants.ENABLE_UNSAFE_SORT,
             CarbonCommonConstants.ENABLE_UNSAFE_SORT_DEFAULT));
-    boolean batchSort = Boolean.parseBoolean(CarbonProperties.getInstance()
-        .getProperty(CarbonCommonConstants.LOAD_USE_BATCH_SORT,
-            CarbonCommonConstants.LOAD_USE_BATCH_SORT_DEFAULT));
-    if (batchSort) {
-      sorter = new UnsafeBatchParallelReadMergeSorterImpl(rowCounter);
-    } else if (offheapsort) {
+    if (offheapsort) {
       sorter = new UnsafeParallelReadMergeSorterImpl(rowCounter);
     } else {
       sorter = new ParallelReadMergeSorterImpl(rowCounter);
@@ -80,6 +74,7 @@ public class SortProcessorStepImpl extends AbstractDataLoadProcessorStep {
   public Iterator<CarbonRowBatch>[] execute() throws CarbonDataLoadingException {
     final Iterator<CarbonRowBatch>[] iterators = child.execute();
     Iterator<CarbonRowBatch>[] sortedIterators = sorter.sort(iterators);
+    child.close();
     return sortedIterators;
   }
 

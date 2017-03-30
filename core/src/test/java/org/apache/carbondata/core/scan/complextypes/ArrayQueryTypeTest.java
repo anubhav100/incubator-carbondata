@@ -21,8 +21,8 @@ import java.nio.ByteBuffer;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.pentaho.di.core.util.Assert.assertNotNull;
+import static org.pentaho.di.core.util.Assert.assertNull;
 
 public class ArrayQueryTypeTest {
 

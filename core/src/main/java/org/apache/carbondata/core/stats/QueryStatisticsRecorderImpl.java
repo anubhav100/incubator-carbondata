@@ -87,52 +87,53 @@ public class QueryStatisticsRecorderImpl implements QueryStatisticsRecorder, Ser
    * Below method will parse queryStatisticsMap and put time into table
    */
   public String collectExecutorStatistics() {
-    long load_blocks_time = 0;
-    long scan_blocks_time = 0;
-    long scan_blocks_num = 0;
-    long load_dictionary_time = 0;
-    long result_size = 0;
-    long total_executor_time = 0;
-    long total_blocklet = 0;
-    long valid_scan_blocklet = 0;
-    long valid_pages_blocklet = 0;
-    long total_pages = 0;
-    long readTime = 0;
+    String load_blocks_time = "";
+    String scan_blocks_time = "";
+    String scan_blocks_num = "";
+    String load_dictionary_time = "";
+    String result_size = "";
+    String total_executor_time = "";
+    String splitChar = " ";
+    String total_blocklet = "";
+    String valid_scan_blocklet = "";
+    String valid_pages_blocklet = "";
+    String total_pages = "";
+    String readTime = "";
     try {
       for (QueryStatistic statistic : queryStatistics) {
         switch (statistic.getMessage()) {
           case QueryStatisticsConstants.LOAD_BLOCKS_EXECUTOR:
-            load_blocks_time += statistic.getTimeTaken();
+            load_blocks_time += statistic.getTimeTaken() + splitChar;
             break;
           case QueryStatisticsConstants.SCAN_BLOCKlET_TIME:
-            scan_blocks_time += statistic.getCount();
+            scan_blocks_time += statistic.getCount() + splitChar;
             break;
           case QueryStatisticsConstants.SCAN_BLOCKS_NUM:
-            scan_blocks_num += statistic.getCount();
+            scan_blocks_num += statistic.getCount() + splitChar;
             break;
           case QueryStatisticsConstants.LOAD_DICTIONARY:
-            load_dictionary_time += statistic.getTimeTaken();
+            load_dictionary_time += statistic.getTimeTaken() + splitChar;
             break;
           case QueryStatisticsConstants.RESULT_SIZE:
-            result_size += statistic.getCount();
+            result_size += statistic.getCount() + splitChar;
             break;
           case QueryStatisticsConstants.EXECUTOR_PART:
-            total_executor_time += statistic.getTimeTaken();
+            total_executor_time += statistic.getTimeTaken() + splitChar;
             break;
           case QueryStatisticsConstants.TOTAL_BLOCKLET_NUM:
-            total_blocklet = statistic.getCount();
+            total_blocklet = statistic.getCount() + splitChar;
             break;
           case QueryStatisticsConstants.VALID_SCAN_BLOCKLET_NUM:
-            valid_scan_blocklet = statistic.getCount();
+            valid_scan_blocklet = statistic.getCount() + splitChar;
             break;
           case QueryStatisticsConstants.VALID_PAGE_SCANNED:
-            valid_pages_blocklet = statistic.getCount();
+            valid_pages_blocklet = statistic.getCount() + splitChar;
             break;
           case QueryStatisticsConstants.TOTAL_PAGE_SCANNED:
-            total_pages = statistic.getCount();
+            total_pages = statistic.getCount() + splitChar;
             break;
           case QueryStatisticsConstants.READ_BLOCKlET_TIME:
-            readTime = statistic.getCount();
+            readTime = statistic.getCount() + splitChar;
             break;
           default:
             break;
@@ -144,17 +145,17 @@ public class QueryStatisticsRecorderImpl implements QueryStatisticsRecorder, Ser
               + "valid_blocklets,total_pages,valid_pages,result_size";
       List<String> values = new ArrayList<String>();
       values.add(queryIWthTask);
-      values.add(load_blocks_time + "ms");
-      values.add(load_dictionary_time + "ms");
-      values.add(scan_blocks_time + "ms");
-      values.add(readTime + "ms");
-      values.add(total_executor_time + "ms");
-      values.add(String.valueOf(scan_blocks_num));
-      values.add(String.valueOf(total_blocklet));
-      values.add(String.valueOf(valid_scan_blocklet));
-      values.add(String.valueOf(total_pages));
-      values.add(String.valueOf(valid_pages_blocklet));
-      values.add(String.valueOf(result_size));
+      values.add(load_blocks_time);
+      values.add(load_dictionary_time);
+      values.add(scan_blocks_time);
+      values.add(readTime);
+      values.add(total_executor_time);
+      values.add(scan_blocks_num);
+      values.add(total_blocklet);
+      values.add(valid_scan_blocklet);
+      values.add(total_pages);
+      values.add(valid_pages_blocklet);
+      values.add(result_size);
       StringBuilder tableInfo = new StringBuilder();
       String[] columns = headers.split(",");
       String line = "";
@@ -167,11 +168,11 @@ public class QueryStatisticsRecorderImpl implements QueryStatisticsRecorder, Ser
         valueLine += "|" + printLine(" ", len - values.get(i).length()) + values.get(i);
       }
       // struct table info
-      tableInfo.append(line).append("+").append("\n");
-      tableInfo.append(hearLine).append("|").append("\n");
-      tableInfo.append(line).append("+").append("\n");
-      tableInfo.append(valueLine).append("|").append("\n");
-      tableInfo.append(line).append("+").append("\n");
+      tableInfo.append(line + "+").append("\n");
+      tableInfo.append(hearLine + "|").append("\n");
+      tableInfo.append(line + "+").append("\n");
+      tableInfo.append(valueLine + "|").append("\n");
+      tableInfo.append(line + "+").append("\n");
       return "Print query statistic for each task id:" + "\n" + tableInfo.toString();
     } catch (Exception ex) {
       return "Put statistics into table failed, catch exception: " + ex.getMessage();

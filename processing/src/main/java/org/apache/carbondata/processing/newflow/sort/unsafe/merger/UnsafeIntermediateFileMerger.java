@@ -293,8 +293,7 @@ public class UnsafeIntermediateFileMerger implements Callable<Void> {
     }
 
     // write complex dimensions here.
-    int dimensionSize =
-        mergerParameters.getDimColCount() + mergerParameters.getComplexDimColCount();
+    int dimensionSize = mergerParameters.getDimColCount();
     int measureSize = mergerParameters.getMeasureColCount();
     for (; dimCount < dimensionSize; dimCount++) {
       byte[] col = (byte[]) row[dimCount];

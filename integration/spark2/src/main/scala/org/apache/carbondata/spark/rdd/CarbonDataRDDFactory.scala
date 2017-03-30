@@ -48,7 +48,7 @@ import org.apache.carbondata.core.mutate.CarbonUpdateUtil
 import org.apache.carbondata.core.statusmanager.LoadMetadataDetails
 import org.apache.carbondata.core.util.CarbonProperties
 import org.apache.carbondata.core.util.path.CarbonStorePath
-import org.apache.carbondata.processing.csvload.BlockDetails
+import org.apache.carbondata.processing.csvreaderstep.{BlockDetails, RddInpututilsForUpdate}
 import org.apache.carbondata.processing.etl.DataLoadingException
 import org.apache.carbondata.processing.model.CarbonLoadModel
 import org.apache.carbondata.processing.newflow.exception.CarbonDataLoadingException
@@ -70,6 +70,7 @@ object CarbonDataRDDFactory {
       alterTableModel: AlterTableModel,
       carbonLoadModel: CarbonLoadModel,
       storePath: String,
+      kettleHomePath: String,
       storeLocation: String): Unit = {
     var compactionSize: Long = 0
     var compactionType: CompactionType = CompactionType.MINOR_COMPACTION
@@ -135,6 +136,7 @@ object CarbonDataRDDFactory {
       handleCompactionForSystemLocking(sqlContext,
         carbonLoadModel,
         storePath,
+        kettleHomePath,
         storeLocation,
         compactionType,
         carbonTable,
@@ -154,6 +156,7 @@ object CarbonDataRDDFactory {
           startCompactionThreads(sqlContext,
             carbonLoadModel,
             storePath,
+            kettleHomePath,
             storeLocation,
             compactionModel,
             lock
@@ -176,6 +179,7 @@ object CarbonDataRDDFactory {
   def handleCompactionForSystemLocking(sqlContext: SQLContext,
       carbonLoadModel: CarbonLoadModel,
       storePath: String,
+      kettleHomePath: String,
       storeLocation: String,
       compactionType: CompactionType,
       carbonTable: CarbonTable,
@@ -191,6 +195,7 @@ object CarbonDataRDDFactory {
         startCompactionThreads(sqlContext,
           carbonLoadModel,
           storePath,
+          kettleHomePath,
           storeLocation,
           compactionModel,
           lock
@@ -227,6 +232,7 @@ object CarbonDataRDDFactory {
   def startCompactionThreads(sqlContext: SQLContext,
       carbonLoadModel: CarbonLoadModel,
       storePath: String,
+      kettleHomePath: String,
       storeLocation: String,
       compactionModel: CompactionModel,
       compactionLock: ICarbonLock): Unit = {
@@ -258,7 +264,7 @@ object CarbonDataRDDFactory {
             DataManagementFunc.executeCompaction(carbonLoadModel: CarbonLoadModel,
               storePath: String,
               compactionModel: CompactionModel,
-              executor, sqlContext, storeLocation
+              executor, sqlContext, kettleHomePath, storeLocation
             )
             triggeredCompactionStatus = true
           } catch {
@@ -307,7 +313,7 @@ object CarbonDataRDDFactory {
                 DataManagementFunc.executeCompaction(newCarbonLoadModel,
                   newCarbonLoadModel.getStorePath,
                   newcompactionModel,
-                  executor, sqlContext, storeLocation
+                  executor, sqlContext, kettleHomePath, storeLocation
                 )
               } catch {
                 case e: Exception =>
@@ -355,8 +361,10 @@ object CarbonDataRDDFactory {
   def loadCarbonData(sqlContext: SQLContext,
       carbonLoadModel: CarbonLoadModel,
       storePath: String,
+      kettleHomePath: String,
       columnar: Boolean,
       partitionStatus: String = CarbonCommonConstants.STORE_LOADSTATUS_SUCCESS,
+      useKettle: Boolean,
       result: Future[DictionaryServer],
       dataFrame: Option[DataFrame] = None,
       updateModel: Option[UpdateTableModel] = None): Unit = {
@@ -398,6 +406,7 @@ object CarbonDataRDDFactory {
           handleCompactionForSystemLocking(sqlContext,
             carbonLoadModel,
             storePath,
+            kettleHomePath,
             storeLocation,
             CompactionType.MINOR_COMPACTION,
             carbonTable,
@@ -415,6 +424,7 @@ object CarbonDataRDDFactory {
               startCompactionThreads(sqlContext,
                 carbonLoadModel,
                 storePath,
+                kettleHomePath,
                 storeLocation,
                 compactionModel,
                 lock
@@ -444,6 +454,10 @@ object CarbonDataRDDFactory {
     try {
       LOGGER.audit(s"Data load request has been received for table" +
           s" ${ carbonLoadModel.getDatabaseName }.${ carbonLoadModel.getTableName }")
+      if (!useKettle) {
+        LOGGER.audit("Data is loading with New Data Flow for table " +
+            s"${ carbonLoadModel.getDatabaseName }.${ carbonLoadModel.getTableName }")
+      }
       // Check if any load need to be deleted before loading new data
       DataManagementFunc.deleteLoadsAndUpdateMetadata(carbonLoadModel.getDatabaseName,
         carbonLoadModel.getTableName, storePath, isForceDeletion = false)
@@ -551,7 +565,8 @@ object CarbonDataRDDFactory {
            * 2)use org.apache.hadoop.mapreduce.lib.input.TextInputFormat to get splits,size info
            * 3)use CarbonLoaderUtil.nodeBlockMapping to get mapping info of node and block,
            *   for locally writing carbondata files(one file one block) in nodes
-           * 4)use NewCarbonDataLoadRDD to load data and write to carbondata files
+           * 4)use kettle: use DataFileLoaderRDD to load data and write to carbondata files
+           *   non kettle: use NewCarbonDataLoadRDD to load data and write to carbondata files
            */
           val hadoopConfiguration = new Configuration(sqlContext.sparkContext.hadoopConfiguration)
           // FileUtils will skip file which is no csv, and return all file path which split by ','
@@ -616,12 +631,27 @@ object CarbonDataRDDFactory {
           ).toArray
         }
 
-        status = new NewCarbonDataLoadRDD(sqlContext.sparkContext,
-          new DataLoadResultImpl(),
-          carbonLoadModel,
-          currentLoadCount,
-          blocksGroupBy,
-          isTableSplitPartition).collect()
+        if (useKettle) {
+          status = new DataFileLoaderRDD(sqlContext.sparkContext,
+            new DataLoadResultImpl(),
+            carbonLoadModel,
+            storePath,
+            kettleHomePath,
+            columnar,
+            currentLoadCount,
+            tableCreationTime,
+            schemaLastUpdatedTime,
+            blocksGroupBy,
+            isTableSplitPartition
+          ).collect()
+        } else {
+          status = new NewCarbonDataLoadRDD(sqlContext.sparkContext,
+            new DataLoadResultImpl(),
+            carbonLoadModel,
+            currentLoadCount,
+            blocksGroupBy,
+            isTableSplitPartition).collect()
+        }
       }
 
       def loadDataFrame(): Unit = {
@@ -635,19 +665,129 @@ object CarbonDataRDDFactory {
             sqlContext.sparkContext)
           val newRdd = new DataLoadCoalescedRDD[Row](rdd, nodes.toArray.distinct)
 
-          status = new NewDataFrameLoaderRDD(sqlContext.sparkContext,
-            new DataLoadResultImpl(),
-            carbonLoadModel,
-            currentLoadCount,
-            tableCreationTime,
-            schemaLastUpdatedTime,
-            newRdd).collect()
+          if (useKettle) {
+            status = new DataFrameLoaderRDD(sqlContext.sparkContext,
+              new DataLoadResultImpl(),
+              carbonLoadModel,
+              storePath,
+              kettleHomePath,
+              columnar,
+              currentLoadCount,
+              tableCreationTime,
+              schemaLastUpdatedTime,
+              newRdd).collect()
+          } else {
+            status = new NewDataFrameLoaderRDD(sqlContext.sparkContext,
+              new DataLoadResultImpl(),
+              carbonLoadModel,
+              currentLoadCount,
+              tableCreationTime,
+              schemaLastUpdatedTime,
+              newRdd).collect()
+          }
 
         } catch {
           case ex: Exception =>
             LOGGER.error(ex, "load data frame failed")
             throw ex
         }
+      }
+
+      def loadDataFrameForUpdate(): Unit = {
+        def triggerDataLoadForSegment(key: String,
+            iter: Iterator[Row]): Iterator[(String, (LoadMetadataDetails, ExecutionErrors))] = {
+          val rddResult = new updateResultImpl()
+          val LOGGER = LogServiceFactory.getLogService(this.getClass.getName)
+          val resultIter = new Iterator[(String, (LoadMetadataDetails, ExecutionErrors))] {
+            var partitionID = "0"
+            val loadMetadataDetails = new LoadMetadataDetails
+            val executionErrors = new ExecutionErrors(FailureCauses.NONE, "")
+            var uniqueLoadStatusId = ""
+            try {
+              val segId = key
+              val taskNo = CarbonUpdateUtil
+                .getLatestTaskIdForSegment(segId,
+                  CarbonStorePath.getCarbonTablePath(carbonLoadModel.getStorePath,
+                    carbonTable.getCarbonTableIdentifier))
+              val index = taskNo + 1
+              uniqueLoadStatusId = carbonLoadModel.getTableName +
+                                   CarbonCommonConstants.UNDERSCORE +
+                                   index
+
+              // convert timestamp
+              val timeStampInLong = updateModel.get.updatedTimeStamp + ""
+              loadMetadataDetails.setPartitionCount(partitionID)
+              loadMetadataDetails.setLoadName(segId)
+              loadMetadataDetails.setLoadStatus(CarbonCommonConstants.STORE_LOADSTATUS_FAILURE)
+              carbonLoadModel.setPartitionId(partitionID)
+              carbonLoadModel.setSegmentId(segId)
+              carbonLoadModel.setTaskNo(String.valueOf(index))
+              carbonLoadModel.setFactTimeStamp(updateModel.get.updatedTimeStamp)
+
+              // During Block Spill case Increment of File Count and proper adjustment of Block
+              // naming is only done when AbstractFactDataWriter.java : initializeWriter get
+              // CarbondataFileName as null. For handling Block Spill not setting the
+              // CarbondataFileName in case of Update.
+              // carbonLoadModel.setCarbondataFileName(newBlockName)
+
+              // storeLocation = CarbonDataLoadRDD.initialize(carbonLoadModel, index)
+              loadMetadataDetails.setLoadStatus(CarbonCommonConstants.STORE_LOADSTATUS_SUCCESS)
+              val rddIteratorKey = CarbonCommonConstants.RDDUTIL_UPDATE_KEY +
+                                   UUID.randomUUID().toString
+
+              try {
+                RddInpututilsForUpdate.put(rddIteratorKey,
+                  new RddIteratorForUpdate(iter, carbonLoadModel))
+                carbonLoadModel.setRddIteratorKey(rddIteratorKey)
+                CarbonDataLoadForUpdate
+                  .run(carbonLoadModel, index, storePath, kettleHomePath,
+                    segId, loadMetadataDetails, executionErrors)
+              } finally {
+                RddInpututilsForUpdate.remove(rddIteratorKey)
+              }
+            } catch {
+              case e: Exception =>
+                LOGGER.info("DataLoad failure")
+                LOGGER.error(e)
+                throw e
+            }
+
+            var finished = false
+
+            override def hasNext: Boolean = !finished
+
+            override def next(): (String, (LoadMetadataDetails, ExecutionErrors)) = {
+              finished = true
+              rddResult
+                .getKey(uniqueLoadStatusId,
+                  (loadMetadataDetails, executionErrors))
+            }
+          }
+          resultIter
+        }
+
+        val updateRdd = dataFrame.get.rdd
+
+
+        val keyRDD = updateRdd.map(row =>
+          // splitting as (key, value) i.e., (segment, updatedRows)
+          (row.get(row.size - 1).toString, Row(row.toSeq.slice(0, row.size - 1): _*))
+        )
+        val groupBySegmentRdd = keyRDD.groupByKey()
+
+        val nodeNumOfData = groupBySegmentRdd.partitions.flatMap[String, Array[String]] { p =>
+          DataLoadPartitionCoalescer.getPreferredLocs(groupBySegmentRdd, p).map(_.host)
+        }.distinct.size
+        val nodes = DistributionUtil.ensureExecutorsByNumberAndGetNodeList(nodeNumOfData,
+          sqlContext.sparkContext)
+        val groupBySegmentAndNodeRdd =
+          new UpdateCoalescedRDD[(String, scala.Iterable[Row])](groupBySegmentRdd,
+            nodes.distinct.toArray)
+
+        res = groupBySegmentAndNodeRdd.map(x =>
+          triggerDataLoadForSegment(x._1, x._2.toIterator).toList
+        ).collect()
+
       }
 
       if (!updateModel.isDefined) {
@@ -658,7 +798,9 @@ object CarbonDataRDDFactory {
       var errorMessage: String = "DataLoad failure"
       var executorMessage: String = ""
       try {
-        if (dataFrame.isDefined) {
+        if (updateModel.isDefined) {
+          loadDataFrameForUpdate()
+        } else if (dataFrame.isDefined) {
           loadDataFrame()
         }
         else {

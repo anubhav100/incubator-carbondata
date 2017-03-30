@@ -377,7 +377,7 @@ class CarbonGlobalDictionaryGenerateRDD(
             // check high cardinality
             if (model.isFirstLoad && model.highCardIdentifyEnable
                 && !model.isComplexes(split.index)
-                && model.primDimensions(split.index).isColumnar) {
+                && model.dimensions(split.index).isColumnar) {
               isHighCardinalityColumn = GlobalDictionaryUtil.isHighCardinalityColumn(
                 valuesBuffer.size, rowCount, model)
               if (isHighCardinalityColumn) {

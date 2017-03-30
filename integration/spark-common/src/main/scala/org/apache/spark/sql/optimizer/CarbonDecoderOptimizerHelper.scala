@@ -25,8 +25,6 @@ import scala.collection.mutable
 import org.apache.spark.sql.catalyst.expressions.Attribute
 import org.apache.spark.sql.catalyst.plans.logical._
 
-import org.apache.carbondata.spark.CarbonAliasDecoderRelation
-
 abstract class AbstractNode
 
 case class Node(cd: CarbonDictionaryTempDecoder) extends AbstractNode
@@ -38,8 +36,7 @@ case class CarbonDictionaryTempDecoder(
     attrList: util.Set[AttributeReferenceWrapper],
     attrsNotDecode: util.Set[AttributeReferenceWrapper],
     child: LogicalPlan,
-    isOuter: Boolean = false,
-    aliasMap: Option[CarbonAliasDecoderRelation] = None) extends UnaryNode {
+    isOuter: Boolean = false) extends UnaryNode {
   var processed = false
 
   def getAttrsNotDecode: util.Set[Attribute] = {

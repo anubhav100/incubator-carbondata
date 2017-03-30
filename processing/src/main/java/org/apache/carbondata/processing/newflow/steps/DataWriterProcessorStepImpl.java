@@ -96,7 +96,7 @@ public class DataWriterProcessorStepImpl extends AbstractDataLoadProcessorStep {
     try {
       CarbonFactDataHandlerModel dataHandlerModel = CarbonFactDataHandlerModel
           .createCarbonFactDataHandlerModel(configuration,
-              getStoreLocation(tableIdentifier, String.valueOf(0)), 0, 0);
+              getStoreLocation(tableIdentifier, String.valueOf(0)), 0);
       noDictionaryCount = dataHandlerModel.getNoDictionaryCount();
       complexDimensionCount = configuration.getComplexDimensionCount();
       measureCount = dataHandlerModel.getMeasureCount();
@@ -110,7 +110,7 @@ public class DataWriterProcessorStepImpl extends AbstractDataLoadProcessorStep {
       for (Iterator<CarbonRowBatch> iterator : iterators) {
         String storeLocation = getStoreLocation(tableIdentifier, String.valueOf(i));
         CarbonFactDataHandlerModel model = CarbonFactDataHandlerModel
-            .createCarbonFactDataHandlerModel(configuration, storeLocation, i, 0);
+            .createCarbonFactDataHandlerModel(configuration, storeLocation, i);
         CarbonFactHandler dataHandler = null;
         boolean rowsNotExist = true;
         while (iterator.hasNext()) {
@@ -134,7 +134,7 @@ public class DataWriterProcessorStepImpl extends AbstractDataLoadProcessorStep {
           "Error while initializing data handler : " + e.getMessage());
     } catch (Exception e) {
       LOGGER.error(e, "Failed for table: " + tableName + " in DataWriterProcessorStepImpl");
-      throw new CarbonDataLoadingException("There is an unexpected error: " + e.getMessage(), e);
+      throw new CarbonDataLoadingException("There is an unexpected error: " + e.getMessage());
     }
     return null;
   }
@@ -183,27 +183,29 @@ public class DataWriterProcessorStepImpl extends AbstractDataLoadProcessorStep {
       while (batch.hasNext()) {
         CarbonRow row = batch.next();
         readCounter++;
-        /*
-        * The order of the data is as follows,
-        * Measuredata, nodictionary/complex byte array data, dictionary(MDK generated key)
-        */
-        int len;
+        Object[] outputRow;
         // adding one for the high cardinality dims byte array.
         if (noDictionaryCount > 0 || complexDimensionCount > 0) {
-          len = measureCount + 1 + 1;
+          outputRow = new Object[measureCount + 1 + 1];
         } else {
-          len = measureCount + 1;
+          outputRow = new Object[measureCount + 1];
         }
-        Object[] outputRow = new Object[len];
-
 
         int l = 0;
+        int index = 0;
         Object[] measures = row.getObjectArray(measureIndex);
         for (int i = 0; i < measureCount; i++) {
-          outputRow[l++] = measures[i];
+          outputRow[l++] = measures[index++];
         }
         outputRow[l] = row.getObject(noDimByteArrayIndex);
-        outputRow[len - 1] = keyGenerator.generateKey(row.getIntArray(dimsArrayIndex));
+
+        int[] highCardExcludedRows = new int[segmentProperties.getDimColumnsCardinality().length];
+        int[] dimsArray = row.getIntArray(dimsArrayIndex);
+        for (int i = 0; i < highCardExcludedRows.length; i++) {
+          highCardExcludedRows[i] = dimsArray[i];
+        }
+
+        outputRow[outputRow.length - 1] = keyGenerator.generateKey(highCardExcludedRows);
         dataHandler.addDataToStore(outputRow);
       }
     } catch (Exception e) {

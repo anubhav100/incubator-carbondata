@@ -150,6 +150,7 @@ object DataManagementFunc {
       compactionModel: CompactionModel,
       executor: ExecutorService,
       sqlContext: SQLContext,
+      kettleHomePath: String,
       storeLocation: String): Unit = {
     val sortedSegments: util.List[LoadMetadataDetails] = new util.ArrayList[LoadMetadataDetails](
       carbonLoadModel.getLoadMetadataDetails
@@ -180,6 +181,7 @@ object DataManagementFunc {
         storePath,
         sqlContext,
         compactionModel,
+        kettleHomePath,
         carbonLoadModel,
         storeLocation
       )
@@ -237,6 +239,7 @@ object DataManagementFunc {
       storePath: String,
       sqlContext: SQLContext,
       compactionModel: CompactionModel,
+      kettleHomePath: String,
       carbonLoadModel: CarbonLoadModel,
       storeLocation: String): Unit = {
 
@@ -249,6 +252,7 @@ object DataManagementFunc {
       carbonLoadModel,
       storeLocation,
       compactionModel.carbonTable,
+      kettleHomePath,
       compactionModel.tableCreationTime,
       loadsToMerge,
       sqlContext,
