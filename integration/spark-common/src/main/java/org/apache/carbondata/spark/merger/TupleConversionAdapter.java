@@ -16,8 +16,12 @@
  */
 package org.apache.carbondata.spark.merger;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.carbondata.core.datastore.block.SegmentProperties;
 import org.apache.carbondata.core.scan.wrappers.ByteArrayWrapper;
+import org.apache.carbondata.processing.util.RemoveDictionaryUtil;
 
 /**
  * This class will be used to convert the Result into the format used in data writer.
@@ -57,7 +61,15 @@ class TupleConversionAdapter {
 
     // put No dictionary byte []
     if (isNoDictionaryPresent) {
-      row[index++] = ((ByteArrayWrapper) carbonTuple[0]).getNoDictionaryKeys();
+
+      int noDicCount = segmentproperties.getNumberOfNoDictionaryDimension();
+      List<byte[]> noDicByteArr = new ArrayList<>(noDicCount);
+      for (int i = 0; i < noDicCount; i++) {
+        noDicByteArr.add(((ByteArrayWrapper) carbonTuple[0]).getNoDictionaryKeyByIndex(i));
+      }
+      byte[] singleByteArr = RemoveDictionaryUtil.convertListByteArrToSingleArr(noDicByteArr);
+
+      row[index++] = singleByteArr;
     }
 
     // put No Dictionary Dims

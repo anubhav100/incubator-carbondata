@@ -333,7 +333,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     return result;
   }
 
-  private Expression getFilterPredicates(Configuration configuration) {
+  protected Expression getFilterPredicates(Configuration configuration) {
     try {
       String filterExprString = configuration.get(FILTER_PREDICATE);
       if (filterExprString == null) {
@@ -619,7 +619,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
     // set the filter to the query model in order to filter blocklet before scan
     Expression filter = getFilterPredicates(configuration);
     CarbonInputFormatUtil.processFilterExpression(filter, carbonTable);
-    FilterResolverIntf filterIntf =  CarbonInputFormatUtil.resolveFilter(filter, identifier);
+    FilterResolverIntf filterIntf = CarbonInputFormatUtil.resolveFilter(filter, identifier);
     queryModel.setFilterExpressionResolverTree(filterIntf);
 
     // update the file level index store if there are invalid segment

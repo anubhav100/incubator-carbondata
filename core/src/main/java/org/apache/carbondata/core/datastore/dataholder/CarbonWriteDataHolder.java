@@ -34,7 +34,7 @@ public class CarbonWriteDataHolder {
   private byte[][] byteValues;
 
   /**
-   * byteValues for no dictionary.
+   * byteValues for no dictionary and non kettle flow.
    */
   private byte[][][] byteValuesForNonDictionary;
 
@@ -72,6 +72,7 @@ public class CarbonWriteDataHolder {
 
   /**
    * Method to initialise double array
+   * TODO Remove after kettle flow got removed.
    *
    * @param size
    */
@@ -89,7 +90,7 @@ public class CarbonWriteDataHolder {
    *
    * @param size
    */
-  public void initialiseByteArrayValuesForKey(int size) {
+  public void initialiseByteArrayValuesWithOutKettle(int size) {
     if (size < 1) {
       throw new IllegalArgumentException("Invalid array size");
     }

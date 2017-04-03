@@ -89,6 +89,12 @@ public class CompressionNoneLong extends ValueCompressionHolder<long[]> {
     throw new UnsupportedOperationException("Get big decimal is not supported");
   }
 
+  private void setUncompressedValues(long[] data) {
+    this.measureChunkStore =
+        MeasureChunkStoreFactory.INSTANCE.getMeasureDataChunkStore(DataType.DATA_LONG, data.length);
+    this.measureChunkStore.putData(data);
+  }
+
   @Override public void freeMemory() {
     this.measureChunkStore.freeMemory();
   }

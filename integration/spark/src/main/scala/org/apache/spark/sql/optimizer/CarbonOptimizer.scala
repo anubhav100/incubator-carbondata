@@ -246,21 +246,14 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
               union.right.isInstanceOf[CarbonDictionaryTempDecoder]) =>
           val leftCondAttrs = new util.HashSet[AttributeReferenceWrapper]
           val rightCondAttrs = new util.HashSet[AttributeReferenceWrapper]
-          val leftLocalAliasMap = CarbonAliasDecoderRelation()
-          val rightLocalAliasMap = CarbonAliasDecoderRelation()
-          // collect alias information for the child plan again. It is required as global alias
-          // may have duplicated in case of aliases
-          collectInformationOnAttributes(union.left, leftLocalAliasMap)
-          collectInformationOnAttributes(union.right, rightLocalAliasMap)
           union.left.output.foreach { attr =>
-            if (isDictionaryEncoded(attr, attrMap, leftLocalAliasMap)) {
-              leftCondAttrs.add(AttributeReferenceWrapper(leftLocalAliasMap.getOrElse(attr, attr)))
+            if (isDictionaryEncoded(attr, attrMap, aliasMap)) {
+              leftCondAttrs.add(AttributeReferenceWrapper(aliasMap.getOrElse(attr, attr)))
             }
           }
           union.right.output.foreach { attr =>
-            if (isDictionaryEncoded(attr, attrMap, rightLocalAliasMap)) {
-              rightCondAttrs.add(
-                AttributeReferenceWrapper(rightLocalAliasMap.getOrElse(attr, attr)))
+            if (isDictionaryEncoded(attr, attrMap, aliasMap)) {
+              rightCondAttrs.add(AttributeReferenceWrapper(aliasMap.getOrElse(attr, attr)))
             }
           }
           var leftPlan = union.left
@@ -269,13 +262,13 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
               !leftPlan.isInstanceOf[CarbonDictionaryCatalystDecoder]) {
             leftPlan = CarbonDictionaryTempDecoder(leftCondAttrs,
               new util.HashSet[AttributeReferenceWrapper](),
-              union.left, isOuter = false, Some(leftLocalAliasMap))
+              union.left)
           }
           if (hasCarbonRelation(rightPlan) && rightCondAttrs.size() > 0 &&
               !rightPlan.isInstanceOf[CarbonDictionaryCatalystDecoder]) {
             rightPlan = CarbonDictionaryTempDecoder(rightCondAttrs,
               new util.HashSet[AttributeReferenceWrapper](),
-              union.right, isOuter = false, Some(rightLocalAliasMap))
+              union.right)
           }
           if (!decoder) {
             decoder = true
@@ -552,18 +545,16 @@ class ResolveCarbonFunctions(relations: Seq[CarbonDecoderRelation])
   }
 
   private def updateTempDecoder(plan: LogicalPlan,
-      aliasMapOriginal: CarbonAliasDecoderRelation,
+      aliasMap: CarbonAliasDecoderRelation,
       attrMap: java.util.HashMap[AttributeReferenceWrapper, CarbonDecoderRelation]):
   LogicalPlan = {
     var allAttrsNotDecode: util.Set[AttributeReferenceWrapper] =
       new util.HashSet[AttributeReferenceWrapper]()
     val marker = new CarbonPlanMarker
-    var aliasMap = aliasMapOriginal
     plan transformDown {
       case cd: CarbonDictionaryTempDecoder if !cd.processed =>
         cd.processed = true
         allAttrsNotDecode = cd.attrsNotDecode
-        aliasMap = cd.aliasMap.getOrElse(aliasMap)
         marker.pushMarker(allAttrsNotDecode)
         if (cd.isOuter) {
           CarbonDictionaryCatalystDecoder(relations,

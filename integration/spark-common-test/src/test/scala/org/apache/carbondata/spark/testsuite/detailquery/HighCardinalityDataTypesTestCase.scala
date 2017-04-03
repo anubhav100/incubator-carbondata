@@ -88,14 +88,11 @@ class NO_DICTIONARY_COL_TestCase extends QueryTest with BeforeAndAfterAll {
   }
 
   test("Count (*) with filter") {
-    // sql("select * from NO_DICTIONARY_CARBON_6 where empno != '16'").show()
-    sql("select * from NO_DICTIONARY_CARBON_6 where empno > '11' and empno <= '30'").show()
     checkAnswer(
       sql("select count(*) from NO_DICTIONARY_CARBON_6 where empno='11'"),
       Seq(Row(1))
     )
   }
-
 
   test("Detail Query with NO_DICTIONARY_COLUMN Compare With HIVE RESULT") {
 
@@ -240,7 +237,6 @@ test("filter with arithmetic expression") {
     )
   }
         
-
 
   override def afterAll {
     sql("drop table if exists filtertestTable")

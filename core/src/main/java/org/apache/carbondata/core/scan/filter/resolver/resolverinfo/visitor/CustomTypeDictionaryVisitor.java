@@ -68,7 +68,7 @@ public class CustomTypeDictionaryVisitor implements ResolvedFilterInfoVisitorInt
     visitableObj.setFilterValues(resolvedFilterObject);
   }
 
-  protected DimColumnFilterInfo getDirectDictionaryValKeyMemberForFilter(
+  private DimColumnFilterInfo getDirectDictionaryValKeyMemberForFilter(
       ColumnExpression columnExpression, List<String> evaluateResultListFinal,
       boolean isIncludeFilter, DataType dataType) {
     List<Integer> surrogates = new ArrayList<Integer>(20);

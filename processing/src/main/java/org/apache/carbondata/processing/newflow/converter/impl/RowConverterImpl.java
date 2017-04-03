@@ -155,7 +155,7 @@ public class RowConverterImpl implements RowConverter {
       fieldConverters[i].convert(row, logHolder);
       if (!logHolder.isLogged() && logHolder.isBadRecordNotAdded()) {
         if (badRecordLogger.isDataLoadFail()) {
-          String error = "Data load failed due to bad record: " + logHolder.getReason();
+          String error = "Data load failed due to bad bad record: " + logHolder.getReason();
           throw new CarbonDataLoadingException(error);
         }
         badRecordLogger.addBadRecordsToBuilder(copy.getData(), logHolder.getReason());
@@ -171,6 +171,22 @@ public class RowConverterImpl implements RowConverter {
 
   @Override
   public void finish() {
+    List<Integer> dimCardinality = new ArrayList<>();
+    if (fieldConverters != null) {
+      for (int i = 0; i < fieldConverters.length; i++) {
+        if (fieldConverters[i] instanceof AbstractDictionaryFieldConverterImpl) {
+          ((AbstractDictionaryFieldConverterImpl) fieldConverters[i])
+              .fillColumnCardinality(dimCardinality);
+        }
+      }
+    }
+    int[] cardinality = new int[dimCardinality.size()];
+    for (int i = 0; i < dimCardinality.size(); i++) {
+      cardinality[i] = dimCardinality.get(i);
+    }
+    // Set the cardinality to configuration, it will be used by further step for mdk key.
+    configuration.setDataLoadProperty(DataLoadProcessorConstants.DIMENSION_LENGTHS, cardinality);
+
     // close dictionary client when finish write
     if (configuration.getUseOnePass()) {
       for (DictionaryClient client : dictClients) {
@@ -213,20 +229,4 @@ public class RowConverterImpl implements RowConverter {
     return converter;
   }
 
-  @Override public int[] getCardinality() {
-    List<Integer> dimCardinality = new ArrayList<>();
-    if (fieldConverters != null) {
-      for (int i = 0; i < fieldConverters.length; i++) {
-        if (fieldConverters[i] instanceof AbstractDictionaryFieldConverterImpl) {
-          ((AbstractDictionaryFieldConverterImpl) fieldConverters[i])
-              .fillColumnCardinality(dimCardinality);
-        }
-      }
-    }
-    int[] cardinality = new int[dimCardinality.size()];
-    for (int i = 0; i < dimCardinality.size(); i++) {
-      cardinality[i] = dimCardinality.get(i);
-    }
-    return cardinality;
-  }
 }

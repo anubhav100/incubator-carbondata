@@ -18,7 +18,6 @@
 package org.apache.carbondata.core.memory;
 
 import java.lang.reflect.Field;
-import java.nio.ByteOrder;
 
 import sun.misc.Unsafe;
 
@@ -34,9 +33,6 @@ public final class CarbonUnsafe {
   public static final int LONG_ARRAY_OFFSET;
 
   public static final int DOUBLE_ARRAY_OFFSET;
-
-  public static final boolean ISLITTLEENDIAN =
-      ByteOrder.nativeOrder().equals(ByteOrder.LITTLE_ENDIAN);
 
   public static Unsafe unsafe;
 

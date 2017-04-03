@@ -114,8 +114,8 @@ public class FilterQueryScannedResultTest {
 //    assertThat(expectedResult, is(equalTo(dictionaryKeyStringArray)));
 //  }
 //
-//  @Test public void testToGetCurrentRowId() {
-//    int rowId = filterQueryScannedResult.getCurrentRowId();
+//  @Test public void testToGetCurrenrRowId() {
+//    int rowId = filterQueryScannedResult.getCurrenrRowId();
 //    int expectedResult = 3;
 //    assertThat(expectedResult, is(equalTo(rowId)));
 //  }

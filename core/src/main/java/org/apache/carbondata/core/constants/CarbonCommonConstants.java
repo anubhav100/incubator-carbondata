@@ -69,6 +69,10 @@ public final class CarbonCommonConstants {
    */
   public static final String STORE_LOCATION_DEFAULT_VAL = "../carbon.store";
   /**
+   * the folder name of kettle home path
+   */
+  public static final String KETTLE_HOME_NAME = "carbonplugins";
+  /**
    * CARDINALITY_INCREMENT_DEFAULT_VALUE
    */
   public static final int CARDINALITY_INCREMENT_VALUE_DEFAULT_VAL = 10;
@@ -1091,28 +1095,9 @@ public final class CarbonCommonConstants {
 
   public static final String IN_MEMORY_FOR_SORT_DATA_IN_MB_DEFAULT = "1024";
 
-  /**
-   * Sorts the data in batches and writes the batch data to store with index file.
-   */
-  public static final String LOAD_USE_BATCH_SORT = "carbon.load.use.batch.sort";
-
-  /**
-   * If set to true, the sorting scope is smaller and more index tree will be created,
-   * thus loading is faster but query maybe slower.
-   * If set to false, the sorting scope is bigger and one index tree per data node will be created,
-   * thus loading is slower but query is faster.
-   */
-  public static final String LOAD_USE_BATCH_SORT_DEFAULT = "false";
-
-  /**
-   * Size of batch data to keep in memory, as a thumb rule it supposed
-   * to be less than 45% of sort.inmemory.size.inmb otherwise it may spill intermediate data to disk
-   */
-  public static final String LOAD_BATCH_SORT_SIZE_INMB = "carbon.load.batch.sort.size.inmb";
-
   public static final String ENABLE_VECTOR_READER = "carbon.enable.vector.reader";
 
-  public static final String ENABLE_VECTOR_READER_DEFAULT = "true";
+  public static final String ENABLE_VECTOR_READER_DEFAULT = "false";
 
   /*
    * carbon dictionary server port
@@ -1170,6 +1155,9 @@ public final class CarbonCommonConstants {
 
   public static final String LOCAL_FILE_PREFIX = "file://";
 
+  public static final String USE_KETTLE = "use_kettle";
+
+  public static final String USE_KETTLE_DEFAULT = "false";
   public static final String CARBON_CUSTOM_BLOCK_DISTRIBUTION = "carbon.custom.block.distribution";
   public static final String CARBON_CUSTOM_BLOCK_DISTRIBUTION_DEFAULT = "false";
 

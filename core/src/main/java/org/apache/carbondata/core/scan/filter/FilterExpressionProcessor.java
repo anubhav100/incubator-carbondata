@@ -44,7 +44,6 @@ import org.apache.carbondata.core.scan.filter.resolver.FilterResolverIntf;
 import org.apache.carbondata.core.scan.filter.resolver.LogicalFilterResolverImpl;
 import org.apache.carbondata.core.scan.filter.resolver.RowLevelFilterResolverImpl;
 import org.apache.carbondata.core.scan.filter.resolver.RowLevelRangeFilterResolverImpl;
-import org.apache.carbondata.core.scan.filter.resolver.resolverinfo.TrueConditionalResolverImpl;
 
 public class FilterExpressionProcessor implements FilterProcessor {
 
@@ -212,9 +211,6 @@ public class FilterExpressionProcessor implements FilterProcessor {
             createFilterResolverTree(currentExpression.getLeft(), tableIdentifier),
             createFilterResolverTree(currentExpression.getRight(), tableIdentifier),
             currentExpression);
-      case RANGE:
-        return getFilterResolverBasedOnExpressionType(ExpressionType.RANGE, true,
-            expressionTree, tableIdentifier, expressionTree);
       case EQUALS:
       case IN:
         return getFilterResolverBasedOnExpressionType(ExpressionType.EQUALS,
@@ -234,9 +230,6 @@ public class FilterExpressionProcessor implements FilterProcessor {
       case FALSE:
         return getFilterResolverBasedOnExpressionType(ExpressionType.FALSE, false,
             expressionTree, tableIdentifier, expressionTree);
-      case TRUE:
-        return getFilterResolverBasedOnExpressionType(ExpressionType.TRUE, false,
-            expressionTree, tableIdentifier, expressionTree);
       default:
         return getFilterResolverBasedOnExpressionType(ExpressionType.UNKNOWN, false, expressionTree,
             tableIdentifier, expressionTree);
@@ -255,8 +248,6 @@ public class FilterExpressionProcessor implements FilterProcessor {
     switch (filterExpressionType) {
       case FALSE:
         return new RowLevelFilterResolverImpl(expression, false, false, tableIdentifier);
-      case TRUE:
-        return new TrueConditionalResolverImpl(expression, false, false, tableIdentifier);
       case EQUALS:
         currentCondExpression = (BinaryConditionalExpression) expression;
         if (currentCondExpression.isSingleDimension()
@@ -286,14 +277,10 @@ public class FilterExpressionProcessor implements FilterProcessor {
                   tableIdentifier);
             }
           }
-          return new ConditionalFilterResolverImpl(expression, isExpressionResolve, true,
-              tableIdentifier);
+          return new ConditionalFilterResolverImpl(expression, isExpressionResolve, true);
 
         }
         break;
-      case RANGE:
-        return new ConditionalFilterResolverImpl(expression, isExpressionResolve, true,
-            tableIdentifier);
       case NOT_EQUALS:
         currentCondExpression = (BinaryConditionalExpression) expression;
         if (currentCondExpression.isSingleDimension()
@@ -321,27 +308,24 @@ public class FilterExpressionProcessor implements FilterProcessor {
                   tableIdentifier);
             }
 
-            return new ConditionalFilterResolverImpl(expression, isExpressionResolve, false,
-                tableIdentifier);
+            return new ConditionalFilterResolverImpl(expression, isExpressionResolve, false);
           }
-          return new ConditionalFilterResolverImpl(expression, isExpressionResolve, false,
-              tableIdentifier);
+          return new ConditionalFilterResolverImpl(expression, isExpressionResolve, false);
         }
         break;
-
       default:
         if (expression instanceof ConditionalExpression) {
           condExpression = (ConditionalExpression) expression;
           if (condExpression.isSingleDimension()
-              && condExpression.getColumnList().get(0).getCarbonColumn().getDataType()
-              != DataType.ARRAY
-              && condExpression.getColumnList().get(0).getCarbonColumn().getDataType()
-              != DataType.STRUCT) {
+                  && condExpression.getColumnList().get(0).getCarbonColumn().getDataType()
+                  != DataType.ARRAY
+                  && condExpression.getColumnList().get(0).getCarbonColumn().getDataType()
+                  != DataType.STRUCT) {
             condExpression = (ConditionalExpression) expression;
             if (condExpression.getColumnList().get(0).getCarbonColumn()
-                .hasEncoding(Encoding.DICTIONARY) && !condExpression.getColumnList().get(0)
-                .getCarbonColumn().hasEncoding(Encoding.DIRECT_DICTIONARY)) {
-              return new ConditionalFilterResolverImpl(expression, true, true, tableIdentifier);
+                    .hasEncoding(Encoding.DICTIONARY) && !condExpression.getColumnList().get(0)
+                    .getCarbonColumn().hasEncoding(Encoding.DIRECT_DICTIONARY)) {
+              return new ConditionalFilterResolverImpl(expression, true, true);
             }
           }
         }

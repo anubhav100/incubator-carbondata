@@ -83,7 +83,7 @@ public class FilterQueryScannedResult extends AbstractScannedResult {
    *
    * @return valid row id
    */
-  @Override public int getCurrentRowId() {
+  @Override public int getCurrenrRowId() {
     return rowMapping[pageCounter][currentRow];
   }
 

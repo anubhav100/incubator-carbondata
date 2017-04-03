@@ -407,8 +407,7 @@ public class CarbonUpdateUtil {
     int max = 0;
     if (null != dataFiles) {
       for (CarbonFile file : dataFiles) {
-        int taskNumber =
-            Integer.parseInt(CarbonTablePath.DataFileUtil.getTaskNo(file.getName()).split("_")[0]);
+        int taskNumber = Integer.parseInt(CarbonTablePath.DataFileUtil.getTaskNo(file.getName()));
         if (taskNumber > max) {
           max = taskNumber;
         }

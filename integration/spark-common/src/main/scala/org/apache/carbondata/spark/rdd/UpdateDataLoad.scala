@@ -31,11 +31,11 @@ import org.apache.carbondata.processing.newflow.DataLoadExecutor
 import org.apache.carbondata.processing.newflow.exception.BadRecordFoundException
 
 /**
- * Data load in case of update command .
+ * Data load in case of update command with out kettle.
  */
 object UpdateDataLoad {
 
-  def DataLoadForUpdate(segId: String,
+  def DataLoadNoKettleForUpdate(segId: String,
       index: Int,
       iter: Iterator[Row],
       carbonLoadModel: CarbonLoadModel,
@@ -49,6 +49,7 @@ object UpdateDataLoad {
 
       val loader = new SparkPartitionLoader(carbonLoadModel,
         index,
+        null,
         null,
         segId,
         loadMetadataDetails)

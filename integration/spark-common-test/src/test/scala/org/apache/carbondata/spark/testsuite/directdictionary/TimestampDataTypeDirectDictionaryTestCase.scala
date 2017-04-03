@@ -70,7 +70,6 @@ class TimestampDataTypeDirectDictionaryTest extends QueryTest with BeforeAndAfte
   }
 
   test("test direct dictionary for not null condition") {
-    sql("select doj, empno from directDictionaryTable where doj >= '2016-03-14 15:00:09' and doj < '2016-03-14 15:00:10'").show()
     checkAnswer(
       sql("select doj from directDictionaryTable where doj is not null"),
       Seq(Row(Timestamp.valueOf("2016-03-14 15:00:09.0")),

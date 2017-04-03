@@ -71,7 +71,6 @@ public class DataConverterProcessorWithBucketingStepImpl extends AbstractDataLoa
     badRecordLogger = createBadRecordLogger();
     RowConverter converter =
         new RowConverterImpl(child.getOutput(), configuration, badRecordLogger);
-    configuration.setCardinalityFinder(converter);
     converters.add(converter);
     converter.initialize();
     List<Integer> indexes = new ArrayList<>();

@@ -186,11 +186,19 @@ class CarbonDataFrameWriter(val dataFrame: DataFrame) {
   }
 
   private def makeLoadString(csvFolder: String, options: CarbonOption): String = {
-    s"""
+    if (options.useKettle) {
+      s"""
           LOAD DATA INPATH '$csvFolder'
           INTO TABLE ${options.dbName}.${options.tableName}
-          OPTIONS ('FILEHEADER' = '${dataFrame.columns.mkString(",")}')
+          OPTIONS ('FILEHEADER' = '${dataFrame.columns.mkString(",")}', 'USE_KETTLE' = 'true')
       """
+    } else {
+      s"""
+          LOAD DATA INPATH '$csvFolder'
+          INTO TABLE ${options.dbName}.${options.tableName}
+          OPTIONS ('FILEHEADER' = '${dataFrame.columns.mkString(",")}', 'USE_KETTLE' = 'false')
+      """
+    }
   }
 
 

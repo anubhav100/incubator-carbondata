@@ -82,7 +82,7 @@ public class NonFilterQueryScannedResult extends AbstractScannedResult {
    *
    * @return valid row id
    */
-  @Override public int getCurrentRowId() {
+  @Override public int getCurrenrRowId() {
     return currentRow;
   }
 

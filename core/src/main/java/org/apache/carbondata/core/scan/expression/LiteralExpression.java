@@ -17,7 +17,6 @@
 
 package org.apache.carbondata.core.scan.expression;
 
-
 import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.scan.filter.intf.ExpressionType;
 import org.apache.carbondata.core.scan.filter.intf.RowIntf;
@@ -63,13 +62,6 @@ public class LiteralExpression extends LeafExpression {
    */
   public DataType getLiteralExpDataType() {
     return dataType;
-  }
-
-  public Object getLiteralExpValue() {
-    return value;
-  }
-
-  @Override public void findAndSetChild(Expression oldExpr, Expression newExpr) {
   }
 
 }
