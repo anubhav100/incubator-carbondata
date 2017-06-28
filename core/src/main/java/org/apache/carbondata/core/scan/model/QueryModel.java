@@ -39,6 +39,7 @@ import org.apache.carbondata.core.scan.expression.conditional.ConditionalExpress
 import org.apache.carbondata.core.scan.filter.resolver.FilterResolverIntf;
 import org.apache.carbondata.core.stats.QueryStatisticsRecorder;
 import org.apache.carbondata.core.util.CarbonUtil;
+import org.apache.carbondata.core.util.DataTypeConverter;
 
 /**
  * Query model which will have all the detail
@@ -99,6 +100,8 @@ public class QueryModel implements Serializable {
 
   private boolean columnCollector;
 
+  private DataTypeConverter converter;
+
   /**
    * Invalid table blocks, which need to be removed from
    * memory, invalid blocks can be segment which are deleted
@@ -116,7 +119,7 @@ public class QueryModel implements Serializable {
   }
 
   public static QueryModel createModel(AbsoluteTableIdentifier absoluteTableIdentifier,
-      CarbonQueryPlan queryPlan, CarbonTable carbonTable) {
+      CarbonQueryPlan queryPlan, CarbonTable carbonTable, DataTypeConverter converter) {
     QueryModel queryModel = new QueryModel();
     String factTableName = carbonTable.getFactTableName();
     queryModel.setAbsoluteTableIdentifier(absoluteTableIdentifier);
@@ -125,6 +128,7 @@ public class QueryModel implements Serializable {
 
     queryModel.setForcedDetailRawQuery(queryPlan.isRawDetailQuery());
     queryModel.setQueryId(queryPlan.getQueryId());
+    queryModel.setConverter(converter);
     return queryModel;
   }
 
@@ -369,5 +373,13 @@ public class QueryModel implements Serializable {
 
   public void setColumnCollector(boolean columnCollector) {
     this.columnCollector = columnCollector;
+  }
+
+  public DataTypeConverter getConverter() {
+    return converter;
+  }
+
+  public void setConverter(DataTypeConverter converter) {
+    this.converter = converter;
   }
 }
