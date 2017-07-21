@@ -26,13 +26,14 @@ import org.apache.carbondata.core.datastore.block.BlockletInfos;
 import org.apache.carbondata.core.datastore.block.TableBlockInfo;
 import org.apache.carbondata.core.metadata.ColumnarFormatVersion;
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
+import org.apache.carbondata.core.scan.executor.PrestoQueryExecutorFactory;
 import org.apache.carbondata.core.scan.executor.QueryExecutor;
-import org.apache.carbondata.core.scan.executor.QueryExecutorFactory;
 import org.apache.carbondata.core.scan.executor.exception.QueryExecutionException;
 import org.apache.carbondata.core.scan.expression.Expression;
 import org.apache.carbondata.core.scan.model.QueryModel;
 import org.apache.carbondata.core.scan.result.BatchResult;
 import org.apache.carbondata.core.scan.result.iterator.ChunkRowIterator;
+import org.apache.carbondata.presto.impl.PrestoDictionaryDecodeReadSupport;
 
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ConnectorSession;
@@ -41,7 +42,6 @@ import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.predicate.TupleDomain;
 import com.facebook.presto.spi.type.Type;
-import scala.Tuple3;
 
 import static org.apache.carbondata.presto.Types.checkType;
 
@@ -58,7 +58,7 @@ public class CarbondataRecordSet implements RecordSet {
   private List<CarbondataColumnHandle> columns;
   private QueryExecutor queryExecutor;
 
-  private CarbonDictionaryDecodeReaderSupport readSupport;
+  private PrestoDictionaryDecodeReadSupport readSupport;
 
   public CarbondataRecordSet(CarbonTable carbonTable, ConnectorSession session,
       ConnectorSplit split, List<CarbondataColumnHandle> columns, QueryModel queryModel) {
@@ -68,7 +68,7 @@ public class CarbondataRecordSet implements RecordSet {
     this.rebuildConstraints = this.split.getRebuildConstraints();
     this.queryModel = queryModel;
     this.columns = columns;
-    this.readSupport = new CarbonDictionaryDecodeReaderSupport();
+    this.readSupport = new PrestoDictionaryDecodeReadSupport<>();
   }
 
   //todo support later
@@ -92,18 +92,19 @@ public class CarbondataRecordSet implements RecordSet {
         split.getLocalInputSplit().getLength(), new BlockletInfos(),
         //blockletInfos,
         ColumnarFormatVersion.valueOf(split.getLocalInputSplit().getVersion()), null));
+
+    queryModel.setColumnCollector(true);
     queryModel.setTableBlockInfos(tableBlockInfoList);
 
-    queryExecutor = QueryExecutorFactory.getQueryExecutor(queryModel);
+    queryExecutor = PrestoQueryExecutorFactory.getQueryExecutor(queryModel);
 
+    //queryModel.setQueryId(queryModel.getQueryId() + "_" + split.getLocalInputSplit().getSegmentId());
     try {
-
-      Tuple3[] dict = readSupport
+      readSupport
           .initialize(queryModel.getProjectionColumns(), queryModel.getAbsoluteTableIdentifier());
       CarbonIterator<Object[]> carbonIterator =
           new ChunkRowIterator((CarbonIterator<BatchResult>) queryExecutor.execute(queryModel));
-      RecordCursor rc =
-          new CarbondataRecordCursor(readSupport, carbonIterator, columns, split, dict);
+      RecordCursor rc = new CarbondataRecordCursor(readSupport, carbonIterator, columns, split);
       return rc;
     } catch (QueryExecutionException e) {
       throw new RuntimeException(e.getMessage(), e);
@@ -112,4 +113,3 @@ public class CarbondataRecordSet implements RecordSet {
     }
   }
 }
-
