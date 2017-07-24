@@ -19,24 +19,63 @@ package org.apache.carbondata.hive;
 
 import org.apache.carbondata.core.scan.result.vector.CarbonColumnVector;
 
+import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.ColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.DoubleColumnVector;
+import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
+import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.spark.sql.types.DataType;
 import org.apache.spark.sql.types.Decimal;
+import scala.util.control.Exception;
 
 public class CarbonColumnarVectorWrapper implements CarbonColumnVector {
 
-  private ColumnVector columnVector;
 
   private boolean[] filteredRows;
 
   private int counter;
 
+  private ColumnVector columnVector;
+
   private boolean filteredRowsExist;
 
-  public CarbonColumnarVectorWrapper(ColumnVector columnVector, boolean[] filteredRows) {
+  private BytesColumnVector bytesColumnVector;
+
+  private LongColumnVector longColumnVector;
+
+  private DoubleColumnVector doubleColumnVector;
+
+  private String vectorType;
+
+  CarbonColumnarVectorWrapper(ColumnVector columnVector, boolean[] filteredRows)
+      throws HiveException {
+
     this.columnVector = columnVector;
-    this.filteredRows = filteredRows;
+    initilizedVector();
+
+    if(columnVector instanceof BytesColumnVector) {
+      bytesColumnVector = (BytesColumnVector) columnVector;
+      this.filteredRows = filteredRows;
+
+    }
+    if(columnVector instanceof LongColumnVector) {
+      longColumnVector = (LongColumnVector) columnVector;
+      this.filteredRows = filteredRows;
+
+    }
+    if(columnVector instanceof DoubleColumnVector){
+      doubleColumnVector = (DoubleColumnVector) columnVector;
+      this.filteredRows = filteredRows;
+
+    }
+    else {
+      throw new HiveException("Unsupported Vector Type In Hive");
+    }
   }
+
+private void initilizedVector(){
+  this.columnVector.init();
+}
 
   @Override public void putBoolean(int rowId, boolean value) {
     if (!filteredRows[rowId]) {

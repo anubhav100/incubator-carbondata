@@ -46,6 +46,7 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.mapred.Task;
 import org.apache.hadoop.mapreduce.Job;
 
 /**
@@ -132,7 +133,7 @@ public class VectorizedCarbonInputFormat extends CarbonInputFormat<VectorizedRow
     StringBuilder projectionColumns = new StringBuilder();
     for (CarbonColumn column : carbonColumns) {
       carbonColumnNames.add(column.getColName());
-      allColumns.append(column.getColName() + ",");
+      allColumns.append(column.getColName()).append(",");
     }
 
     if (!projection.equals("")) {

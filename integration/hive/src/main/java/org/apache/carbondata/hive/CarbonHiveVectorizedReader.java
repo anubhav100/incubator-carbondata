@@ -17,6 +17,7 @@
 package org.apache.carbondata.hive;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -28,7 +29,6 @@ import org.apache.carbondata.core.keygenerator.directdictionary.DirectDictionary
 import org.apache.carbondata.core.keygenerator.directdictionary.DirectDictionaryKeyGeneratorFactory;
 import org.apache.carbondata.core.metadata.datatype.DataType;
 import org.apache.carbondata.core.metadata.encoder.Encoding;
-import org.apache.carbondata.core.metadata.schema.table.column.CarbonColumn;
 import org.apache.carbondata.core.scan.executor.QueryExecutor;
 import org.apache.carbondata.core.scan.executor.QueryExecutorFactory;
 import org.apache.carbondata.core.scan.executor.exception.QueryExecutionException;
@@ -43,11 +43,9 @@ import org.apache.carbondata.core.stats.QueryStatisticsConstants;
 import org.apache.carbondata.core.stats.QueryStatisticsRecorder;
 import org.apache.carbondata.core.util.CarbonUtil;
 import org.apache.carbondata.spark.util.CarbonScalaUtil;
-import org.apache.carbondata.spark.vectorreader.ColumnarVectorWrapper;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.DecimalColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.DoubleColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
 import org.apache.hadoop.hive.ql.exec.vector.VectorColumnAssign;
@@ -56,9 +54,6 @@ import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
 import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatchCtx;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.serde.serdeConstants;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector;
-import org.apache.hadoop.hive.serde2.typeinfo.DecimalTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
@@ -71,63 +66,51 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.spark.memory.MemoryMode;
-import org.apache.spark.sql.execution.vectorized.ColumnarBatch;
 import org.apache.spark.sql.types.DecimalType;
 import org.apache.spark.sql.types.StructField;
-import org.apache.spark.sql.types.StructType;
 
-public class CarbonHiveVectorizedReader
-    implements RecordReader<NullWritable, VectorizedRowBatch> {
-
-  private ArrayWritable valueObj ;
-  private CarbonObjectInspector objInspector;
-  private long recordReaderCounter = 0;
-  private int[] columnIds;
-  private VectorizedRowBatchCtx rbCtx;
-  private long rowReadCount = 0;
-  private int batchIdx = 0;
-
-  private int numBatched = 0;
-
-  //private ColumnarBatch columnarBatch;
-
-  private VectorizedRowBatch columnarBatch;
-
-
-  private CarbonColumnarBatch carbonColumnarBatch;
-
-  private int rowCount = 0;
-
-  private VectorColumnAssign[] assigners;
-
-  /**
-   * If true, this class returns batches instead of rows.
-   */
-  private boolean returnColumnarBatch;
+public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, VectorizedRowBatch> {
 
   /**
    * The default config on whether columnarBatch should be offheap.
    */
-  private static final MemoryMode DEFAULT_MEMORY_MODE = MemoryMode.OFF_HEAP;
+  private ArrayWritable valueObj;
+  private CarbonObjectInspector objInspector;
+  private long recordReaderCounter = 0;
+  private int[] columnIds;
+  private VectorizedRowBatchCtx rowBatchContext;
+  private long rowReadCount = 0;
+  private int batchIdx = 0;
 
-  protected QueryModel queryModel;
+  //private ColumnarBatch columnarBatch;
+  private int numBatched = 0;
+  private VectorizedRowBatch columnarBatch;
+  private CarbonColumnarBatch carbonColumnarBatch;
+  private int rowCount = 0;
+  private VectorColumnAssign[] assigners;
+  /**
+   * If true, this class returns batches instead of rows.
+   */
+  private boolean returnColumnarBatch;
+  private QueryModel queryModel;
 
-  protected AbstractDetailQueryResultIterator iterator;
+  private AbstractDetailQueryResultIterator iterator;
 
-  protected QueryExecutor queryExecutor;
+  private QueryExecutor queryExecutor;
 
-
-  public CarbonHiveVectorizedReader(QueryModel queryModel, InputSplit inputSplit, JobConf jobConf)
+  CarbonHiveVectorizedReader(QueryModel queryModel, InputSplit inputSplit, JobConf jobConf)
       throws IOException, InterruptedException, UnsupportedOperationException {
     initialize(inputSplit, jobConf, queryModel);
+
     try {
-      rbCtx = new VectorizedRowBatchCtx();
-      rbCtx.init(jobConf, (FileSplit) inputSplit);
+      initialize(inputSplit, jobConf, queryModel);
+      enableReturningBatches();
+      rowBatchContext = new VectorizedRowBatchCtx();
+      rowBatchContext.init(jobConf, (FileSplit) inputSplit);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
-
 
   private void initialize(InputSplit inputSplit, Configuration conf, QueryModel queryModel)
       throws IOException, InterruptedException, UnsupportedOperationException {
@@ -160,12 +143,12 @@ public class CarbonHiveVectorizedReader
     final String columnTypeProperty = conf.get(serdeConstants.LIST_COLUMN_TYPES);
 
     if (columnNameProperty.length() == 0) {
-      columnNames = new ArrayList<String>();
+      columnNames = new ArrayList<>();
     } else {
       columnNames = Arrays.asList(columnNameProperty.split(","));
     }
     if (columnTypeProperty.length() == 0) {
-      columnTypes = new ArrayList<TypeInfo>();
+      columnTypes = new ArrayList<>();
     } else {
       columnTypes = TypeInfoUtils.getTypeInfosFromTypeString(columnTypeProperty);
     }
@@ -176,9 +159,8 @@ public class CarbonHiveVectorizedReader
 
     if (!colIds.equals("")) {
       String[] arraySelectedColId = colIds.split(",");
-      List<TypeInfo> reqColTypes = new ArrayList<TypeInfo>();
       columnIds = new int[arraySelectedColId.length];
-      int columnId = 0;
+      int columnId;
       for (int j = 0; j < arraySelectedColId.length; j++) {
         columnId = Integer.parseInt(arraySelectedColId[j]);
         columnIds[j] = columnId;
@@ -189,12 +171,11 @@ public class CarbonHiveVectorizedReader
     this.objInspector = new CarbonObjectInspector((StructTypeInfo) rowTypeInfo);
   }
 
-
-
-  @Override public boolean next(NullWritable key, VectorizedRowBatch outputBatch) throws IOException {
+  @Override public boolean next(NullWritable key, VectorizedRowBatch outputBatch)
+      throws IOException {
     try {
       if (assigners != null) {
-        assert(outputBatch.numCols == assigners.length);
+        assert (outputBatch.numCols == assigners.length);
       }
       outputBatch.reset();
       int maxSize = outputBatch.getMaxSize();
@@ -202,14 +183,10 @@ public class CarbonHiveVectorizedReader
       if (nextKeyValue()) {
         Object obj = getCurrentValue();
         while (outputBatch.size < maxSize) {
-         // if (false == internalReader.next(internalKey, internalValues)) {
-          //  outputBatch.endOfFile = true;
-          //  break;
-         // }
-          Writable[] writables = null; //internalValues.get();
+          Writable[] writables = null;
 
           if (null == assigners) {
-            // Normally we'd build the assigners from the rbCtx.rowOI, but with Parquet
+            // Normally we'd build the assigners from the rowBatchContext.rowOI, but with Parquet
             // we have a discrepancy between the metadata type (Eg. tinyint -> BYTE) and
             // the writable value (IntWritable). see Parquet's ETypeConverter class.
             assigners = VectorColumnAssignFactory.buildAssigners(outputBatch, writables);
@@ -217,14 +194,13 @@ public class CarbonHiveVectorizedReader
 
           for (int i = 0; i < writables.length; ++i) {
             assigners[i].assignObjectValue(writables[i], outputBatch.size);
+
           }
           ++outputBatch.size;
         }
         return outputBatch.size > 0;
       }
-    }catch (HiveException e) {
-      throw new RuntimeException(e);
-    } catch (InterruptedException e) {
+    } catch (HiveException | InterruptedException e) {
       throw new RuntimeException(e);
     }
 
@@ -239,8 +215,7 @@ public class CarbonHiveVectorizedReader
   @Override public VectorizedRowBatch createValue() {
     VectorizedRowBatch outputBatch = null;
     try {
-      outputBatch = rbCtx.createVectorizedRowBatch();
-      //internalValues = internalReader.createValue();
+      outputBatch = rowBatchContext.createVectorizedRowBatch();
     } catch (HiveException e) {
       throw new RuntimeException("Error creating a batch", e);
     }
@@ -250,8 +225,6 @@ public class CarbonHiveVectorizedReader
   @Override public long getPos() throws IOException {
     return rowReadCount;
   }
-
-
 
   @Override public void close() throws IOException {
     logStatistics(rowCount, queryModel.getStatisticsRecorder());
@@ -273,7 +246,7 @@ public class CarbonHiveVectorizedReader
     }
   }
 
-   public boolean nextKeyValue() throws IOException, InterruptedException {
+  private boolean nextKeyValue() throws IOException, InterruptedException, HiveException {
     resultBatch();
 
     if (returnColumnarBatch) return nextBatch();
@@ -285,16 +258,19 @@ public class CarbonHiveVectorizedReader
     return true;
   }
 
-   public Object getCurrentValue() throws IOException, InterruptedException {
+  private Object getCurrentValue() throws IOException, InterruptedException {
     if (returnColumnarBatch) {
       rowCount += columnarBatch.count();
+      Writable[]writables = null;
+
       return columnarBatch;
     }
+
     rowCount += 1;
     return columnarBatch.projectedColumns;
   }
 
-   public Void getCurrentKey() throws IOException, InterruptedException {
+  public Void getCurrentKey() throws IOException, InterruptedException {
     return null;
   }
 
@@ -303,14 +279,11 @@ public class CarbonHiveVectorizedReader
     return 0;
   }
 
-
-
-  private void initBatch(MemoryMode memMode) {
+  private void initBatch() throws HiveException {
     List<QueryDimension> queryDimension = queryModel.getQueryDimension();
     List<QueryMeasure> queryMeasures = queryModel.getQueryMeasures();
     StructField[] fields = new StructField[queryDimension.size() + queryMeasures.size()];
-    for (int i = 0; i < queryDimension.size(); i++) {
-      QueryDimension dim = queryDimension.get(i);
+    for (QueryDimension dim : queryDimension) {
       if (dim.getDimension().hasEncoding(Encoding.DIRECT_DICTIONARY)) {
         DirectDictionaryGenerator generator = DirectDictionaryKeyGeneratorFactory
             .getDirectDictionaryGenerator(dim.getDimension().getDataType());
@@ -330,8 +303,7 @@ public class CarbonHiveVectorizedReader
       }
     }
 
-    for (int i = 0; i < queryMeasures.size(); i++) {
-      QueryMeasure msr = queryMeasures.get(i);
+    for (QueryMeasure msr : queryMeasures) {
       switch (msr.getMeasure().getDataType()) {
         case SHORT:
         case INT:
@@ -342,8 +314,8 @@ public class CarbonHiveVectorizedReader
           break;
         case DECIMAL:
           fields[msr.getQueryOrder()] = new StructField(msr.getColumnName(),
-              new DecimalType(msr.getMeasure().getPrecision(),
-                  msr.getMeasure().getScale()), true, null);
+              new DecimalType(msr.getMeasure().getPrecision(), msr.getMeasure().getScale()), true,
+              null);
           break;
         default:
           fields[msr.getQueryOrder()] = new StructField(msr.getColumnName(),
@@ -361,14 +333,13 @@ public class CarbonHiveVectorizedReader
     for (int i = 0; i < fields.length; i++) {
       vectors[i] = new CarbonColumnarVectorWrapper(columnarBatch.cols[i], filteredRows);
     }
-    carbonColumnarBatch = new CarbonColumnarBatch(vectors, columnarBatch.getMaxSize(), filteredRows);
+    carbonColumnarBatch =
+        new CarbonColumnarBatch(vectors, columnarBatch.getMaxSize(), filteredRows);
   }
 
-  private void initBatch() {
-    initBatch(DEFAULT_MEMORY_MODE);
-  }
 
-  private VectorizedRowBatch resultBatch() {
+
+  private VectorizedRowBatch resultBatch() throws HiveException {
     if (columnarBatch == null) initBatch();
     return columnarBatch;
   }
@@ -388,21 +359,20 @@ public class CarbonHiveVectorizedReader
     carbonColumnarBatch.reset();
     if (iterator.hasNext()) {
       iterator.processNextBatch(carbonColumnarBatch);
-      int actualSize = carbonColumnarBatch.getActualSize();
-      numBatched = actualSize;
+      numBatched = carbonColumnarBatch.getActualSize();
       batchIdx = 0;
       return true;
     }
     return false;
   }
 
-
   /**
    * This method will log query result count and querytime
+   *
    * @param recordCount
    * @param recorder
    */
-  public void logStatistics(int recordCount, QueryStatisticsRecorder recorder) {
+  private void logStatistics(int recordCount, QueryStatisticsRecorder recorder) {
     // result size
     QueryStatistic queryStatistic = new QueryStatistic();
     queryStatistic.addCountStatistic(QueryStatisticsConstants.RESULT_SIZE, recordCount);
@@ -417,69 +387,34 @@ public class CarbonHiveVectorizedReader
    * @return VectorizedRowBatch
    * @throws HiveException
    */
-  public VectorizedRowBatch createVectorizedRowBatch( CarbonObjectInspector carbonObjectInspector) throws HiveException
-  {
-    final List<? extends org.apache.hadoop.hive.serde2.objectinspector.StructField> fieldRefs = carbonObjectInspector.getAllStructFieldRefs();
+  private VectorizedRowBatch createVectorizedRowBatch(CarbonObjectInspector carbonObjectInspector)
+      throws HiveException {
+    final List<? extends org.apache.hadoop.hive.serde2.objectinspector.StructField> fieldRefs =
+        carbonObjectInspector.getAllStructFieldRefs();
     VectorizedRowBatch result = new VectorizedRowBatch(fieldRefs.size());
     for (int j = 0; j < fieldRefs.size(); j++) {
-      // If the column is included in the include list or if the column is a
-      // partition column then create the column vector. Also note that partition columns are not
-      // in the included list.
-      ObjectInspector foi = fieldRefs.get(j).getFieldObjectInspector();
-        switch (foi.getCategory()) {
-          case PRIMITIVE: {
-            PrimitiveObjectInspector poi = (PrimitiveObjectInspector) foi;
-            // Vectorization currently only supports the following data types:
-            // BOOLEAN, BYTE, SHORT, INT, LONG, FLOAT, DOUBLE, BINARY, STRING, CHAR, VARCHAR, TIMESTAMP,
-            // DATE and DECIMAL
-            switch (poi.getPrimitiveCategory()) {
-              case BOOLEAN:
-              case BYTE:
-              case SHORT:
-              case INT:
-              case LONG:
-              case TIMESTAMP:
-              case DATE:
-              case INTERVAL_YEAR_MONTH:
-              case INTERVAL_DAY_TIME:
-                result.cols[j] = new LongColumnVector(VectorizedRowBatch.DEFAULT_SIZE);
-                break;
-              case FLOAT:
-              case DOUBLE:
-                result.cols[j] = new DoubleColumnVector(VectorizedRowBatch.DEFAULT_SIZE);
-                break;
-              case BINARY:
-              case STRING:
-              case CHAR:
-              case VARCHAR:
-                result.cols[j] = new BytesColumnVector(VectorizedRowBatch.DEFAULT_SIZE);
-                break;
-              case DECIMAL:
-                DecimalTypeInfo tInfo = (DecimalTypeInfo) poi.getTypeInfo();
-                result.cols[j] = new DecimalColumnVector(VectorizedRowBatch.DEFAULT_SIZE,
-                    tInfo.precision(), tInfo.scale());
-                break;
-              default:
-                throw new RuntimeException("Vectorizaton is not supported for datatype:"
-                    + poi.getPrimitiveCategory());
-            }
-            break;
-          }
-          case LIST:
-          case MAP:
-          case STRUCT:
-          case UNION:
-            throw new HiveException("Vectorizaton is not supported for datatype:"
-                + foi.getCategory());
-          default:
-            throw new HiveException("Unknown ObjectInspector category!");
-        }
+      switch (fieldRefs.get(j).getFieldObjectInspector().getTypeName()) {
+        case "int":
+        case "long":
+        case "short":
+        case "date":
+        case "timestamp":
+          result.cols[j] = new LongColumnVector();
+          break;
+        case "float":
+        case "double":
+          result.cols[j] = new DoubleColumnVector();
+          break;
+        case "string":
+        case "char":
+          result.cols[j] = new BytesColumnVector();
+          break;
+      }
 
     }
     result.numCols = fieldRefs.size();
     result.reset();
     return result;
   }
-
 
 }

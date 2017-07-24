@@ -37,6 +37,7 @@ object CarbonSessionExample {
       .addProperty(CarbonCommonConstants.CARBON_TIMESTAMP_FORMAT, "yyyy/MM/dd HH:mm:ss")
       .addProperty(CarbonCommonConstants.CARBON_DATE_FORMAT, "yyyy/MM/dd")
       .addProperty(CarbonCommonConstants.ENABLE_UNSAFE_COLUMN_PAGE_LOADING, "true")
+      .addProperty(CarbonCommonConstants.ENABLE_VECTOR_READER,"true" )
 
     import org.apache.spark.sql.CarbonSession._
     val spark = SparkSession
@@ -49,7 +50,7 @@ object CarbonSessionExample {
 
     spark.sparkContext.setLogLevel("WARN")
 
-    spark.sql("DROP TABLE IF EXISTS carbon_table")
+
 
     // Create table
     spark.sql(
@@ -90,7 +91,7 @@ object CarbonSessionExample {
         | WHERE stringfield = 'spark' AND decimalField > 40
       """.stripMargin).show()
 
-    spark.sql(
+  /*  spark.sql(
       s"""
          | SELECT *
          | FROM carbon_table WHERE length(stringField) = 5
@@ -135,7 +136,7 @@ object CarbonSessionExample {
          | SELECT *
          | FROM carbon_table
          | WHERE stringField = 'spark' and floatField > 2.8
-       """.stripMargin).show()
+       """.stripMargin).show()*/
 
     // Drop table
     spark.sql("DROP TABLE IF EXISTS carbon_table")

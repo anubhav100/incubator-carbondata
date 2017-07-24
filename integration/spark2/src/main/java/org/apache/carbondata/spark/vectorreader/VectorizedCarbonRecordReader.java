@@ -152,6 +152,7 @@ public class VectorizedCarbonRecordReader extends AbstractRecordReader<Object> {
     if (returnColumnarBatch) {
       rowCount += columnarBatch.numValidRows();
       return columnarBatch;
+
     }
     rowCount += 1;
     return columnarBatch.getRow(batchIdx - 1);
@@ -197,8 +198,7 @@ public class VectorizedCarbonRecordReader extends AbstractRecordReader<Object> {
       }
     }
 
-    for (int i = 0; i < queryMeasures.size(); i++) {
-      QueryMeasure msr = queryMeasures.get(i);
+    for (QueryMeasure msr : queryMeasures) {
       switch (msr.getMeasure().getDataType()) {
         case SHORT:
         case INT:
@@ -209,8 +209,8 @@ public class VectorizedCarbonRecordReader extends AbstractRecordReader<Object> {
           break;
         case DECIMAL:
           fields[msr.getQueryOrder()] = new StructField(msr.getColumnName(),
-              new DecimalType(msr.getMeasure().getPrecision(),
-                  msr.getMeasure().getScale()), true, null);
+              new DecimalType(msr.getMeasure().getPrecision(), msr.getMeasure().getScale()), true,
+              null);
           break;
         default:
           fields[msr.getQueryOrder()] = new StructField(msr.getColumnName(),
