@@ -100,7 +100,7 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
 
   CarbonHiveVectorizedReader(QueryModel queryModel, InputSplit inputSplit, JobConf jobConf)
       throws IOException, InterruptedException, UnsupportedOperationException {
-    initialize(inputSplit, jobConf, queryModel);
+//    initialize(inputSplit, jobConf, queryModel);
 
     try {
       initialize(inputSplit, jobConf, queryModel);
@@ -182,8 +182,10 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
 
       if (nextKeyValue()) {
         Object obj = getCurrentValue();
+        System.out.print(obj);
         while (outputBatch.size < maxSize) {
-          Writable[] writables = null;
+          System.out.println("-------------------------------" + valueObj.get());
+          Writable[] writables = valueObj.get();
 
           if (null == assigners) {
             // Normally we'd build the assigners from the rowBatchContext.rowOI, but with Parquet

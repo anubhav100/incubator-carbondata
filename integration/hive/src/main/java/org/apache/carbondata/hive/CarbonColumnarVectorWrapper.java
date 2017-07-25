@@ -56,19 +56,13 @@ public class CarbonColumnarVectorWrapper implements CarbonColumnVector {
     if(columnVector instanceof BytesColumnVector) {
       bytesColumnVector = (BytesColumnVector) columnVector;
       this.filteredRows = filteredRows;
-
-    }
-    if(columnVector instanceof LongColumnVector) {
+    } else if(columnVector instanceof LongColumnVector) {
       longColumnVector = (LongColumnVector) columnVector;
       this.filteredRows = filteredRows;
-
-    }
-    if(columnVector instanceof DoubleColumnVector){
+    } else if(columnVector instanceof DoubleColumnVector){
       doubleColumnVector = (DoubleColumnVector) columnVector;
       this.filteredRows = filteredRows;
-
-    }
-    else {
+    } else {
       throw new HiveException("Unsupported Vector Type In Hive");
     }
   }
@@ -110,6 +104,10 @@ private void initilizedVector(){
 
   @Override public void putInt(int rowId, int value) {
     if (!filteredRows[rowId]) {
+      if(this.columnVector instanceof LongColumnVector)
+        longColumnVector.fill((long) value);
+      else if(this.columnVector instanceof BytesColumnVector)
+        System.out.println("Inside byte column vector");
       //columnVector.putInt(counter++, value);
     }
   }
