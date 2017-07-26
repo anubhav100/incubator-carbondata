@@ -23,9 +23,9 @@ object BenchMarkingUtil {
 
   val queries: Array[Query] = Array(
 
-    Query("select * from SUPPLIER limit 10","","")
-
-    /*Query("select\n        l_returnflag,\n        l_linestatus,\n        sum(l_quantity) as " +
+    //Query("select * from LINEITEM limit 10","","")
+/*
+    Query("select\n        l_returnflag,\n        l_linestatus,\n        sum(l_quantity) as " +
            "sum_qty,\n        sum(l_extendedprice) as sum_base_price,\n        sum(l_extendedprice" +
            " * (1 - l_discount)) as sum_disc_price,\n        sum(l_extendedprice * (1 - " +
            "l_discount) * (1 + l_tax)) as sum_charge,\n        avg(l_quantity) as avg_qty,\n      " +
@@ -150,7 +150,7 @@ object BenchMarkingUtil {
            "                then l_extendedprice * (1 - l_discount)\n                else 0\n     " +
            "   end) / sum(l_extendedprice * (1 - l_discount)) as promo_revenue\nfrom\n        " +
            "lineitem,\n        part\nwhere\n        l_partkey = p_partkey\n        and l_shipdate " +
-           ">= cast('1995-08-01' as timestamp) \n        and l_shipdate < cast('1995-09-01' as timestamp)","",""),
+           ">= cast('1995-08-01' as timestamp) \n        and l_shipdate < cast('1995-09-01' as timestamp)","",""),*/
 
      Query("select\n        p_brand,\n        p_type,\n        p_size,\n        count(distinct " +
            "ps_suppkey) as supplier_cnt\nfrom\n        partsupp,\n        part\nwhere\n        " +
@@ -182,7 +182,7 @@ object BenchMarkingUtil {
            "ps_suppkey\nfrom\n    tmp4, tmp3\nwhere\n    ps_partkey = l_partkey\n    and " +
            "ps_suppkey = l_suppkey\n    and ps_availqty > sum_quantity\n)\nselect\n    s_name,\n  " +
            "  s_address\nfrom\n    supplier\nwhere\n    s_suppkey IN (select ps_suppkey from tmp5)" +
-           "\norder by s_name","","")*/
+           "\norder by s_name","","")
   )
 
 
