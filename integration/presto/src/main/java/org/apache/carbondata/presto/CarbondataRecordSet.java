@@ -88,7 +88,7 @@ public class CarbondataRecordSet implements RecordSet {
   @Override public RecordCursor cursor() {
     List<TableBlockInfo> tableBlockInfoList = new ArrayList<TableBlockInfo>();
 
-    tableBlockInfoList.add(new TableBlockInfo(split.getLocalInputSplit().getPath().toString(),
+    tableBlockInfoList.add(new TableBlockInfo(split.getLocalInputSplit().getPath(),
         split.getLocalInputSplit().getStart(), split.getLocalInputSplit().getSegmentId(),
         split.getLocalInputSplit().getLocations().toArray(new String[0]),
         split.getLocalInputSplit().getLength(), new BlockletInfos(),
@@ -111,10 +111,7 @@ public class CarbondataRecordSet implements RecordSet {
       CarbonIterator<BatchResult> carbonIterator = queryExecutor.execute(queryModel);
       System.out.println("Time taken to execute the query on CarbonData " +
           (System.currentTimeMillis() - startTime));
-      RecordCursor rc = new CarbondataRecordCursor(readSupport, carbonIterator, columns, split);
-      return rc;
-    } catch (QueryExecutionException e) {
-      throw new RuntimeException(e.getMessage(), e);
+      return new CarbondataRecordCursor(readSupport, carbonIterator, columns, split);
     } catch (Exception ex) {
       throw new RuntimeException(ex.getMessage(), ex);
     }

@@ -1,20 +1,3 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 package org.apache.carbondata.presto;
 
 import java.io.IOException;
@@ -27,6 +10,7 @@ import java.util.List;
 import org.apache.carbondata.common.CarbonIterator;
 import org.apache.carbondata.core.scan.result.BatchResult;
 
+import com.facebook.presto.hadoop.$internal.com.google.common.base.Throwables;
 import com.facebook.presto.spi.ConnectorPageSource;
 import com.facebook.presto.spi.Page;
 import com.facebook.presto.spi.PageBuilder;
@@ -151,43 +135,12 @@ public class CarbondataPageSource implements ConnectorPageSource {
 
             }
           }
-<<<<<<< Updated upstream
-          /*
-          if (cursor.isNull(column)) {
-            output.appendNull();
-          } else {
-
-
-            if (javaType == boolean.class) {
-              type.writeBoolean(output, cursor.getBoolean(column));
-            } else if (javaType == long.class) {
-              type.writeLong(output, cursor.getLong(column));
-            } else if (javaType == double.class) {
-              type.writeDouble(output, cursor.getDouble(column));
-            } else if (javaType == Slice.class) {
-              Slice slice = cursor.getSlice(column);
-              if(type instanceof  DecimalType)
-              {
-                if (isShortDecimal(type)) {
-                  type.writeLong(output, parseLong((DecimalType) type, slice, 0, slice.length()));
-                } else {
-                  type.writeSlice(output, parseSlice((DecimalType) type, slice, 0, slice.length()));
-                }
-              } else {
-                type.writeSlice(output, slice, 0, slice.length());
-              }
-            } else {
-              type.writeObject(output, cursor.getObject(column));
-            }
-          }*/
-=======
         }
 
         if (types.size() == 0) {
           Object[] data = columnData.get(0);
           pageBuilder.declarePositions(data.length);
           System.out.println("Number of Rows in PageSource " + data.length);
->>>>>>> Stashed changes
         }
       }
     }
@@ -206,10 +159,11 @@ public class CarbondataPageSource implements ConnectorPageSource {
   }
 
   @Override public void close() throws IOException {
+    // some hive input formats are broken and bad things can happen if you close them multiple times
+    if (closed) {
+      return;
+    }
     closed = true;
-<<<<<<< Updated upstream
-    cursor.close();
-=======
 
     try {
       columnCursor.close();
@@ -217,7 +171,6 @@ public class CarbondataPageSource implements ConnectorPageSource {
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }
->>>>>>> Stashed changes
 
   }
 
@@ -249,7 +202,7 @@ public class CarbondataPageSource implements ConnectorPageSource {
     return (Boolean) value;
   }
 
-  public long getLong(Object obj, Type actual) {
+  private long getLong(Object obj, Type actual) {
     Long timeStr = 0L;
     if (obj instanceof Integer) {
       timeStr = ((Integer) obj).longValue();
@@ -265,11 +218,11 @@ public class CarbondataPageSource implements ConnectorPageSource {
     return timeStr;
   }
 
-  public double getDouble(Object value) {
+  private double getDouble(Object value) {
     return (Double) value;
   }
 
-  public Slice getSlice(Object value, Type type) {
+  private Slice getSlice(Object value, Type type) {
     Type decimalType = type;
     if (decimalType instanceof DecimalType) {
       DecimalType actual = (DecimalType) decimalType;
@@ -279,8 +232,7 @@ public class CarbondataPageSource implements ConnectorPageSource {
       } else {
         checkFieldType(field, DecimalType.createDecimalType());
       }*/
-      Object fieldValue = value;
-      BigDecimal bigDecimalValue = new BigDecimal(fieldValue.toString());
+      BigDecimal bigDecimalValue = new BigDecimal(value.toString());
       if (isShortDecimal(decimalType)) {
         return utf8Slice(Decimals.toString(bigDecimalValue.longValue(), actual.getScale()));
       } else {
