@@ -17,9 +17,9 @@
 
 package org.apache.carbondata.presto.impl;
 
-import io.airlift.configuration.Config;
-
 import javax.validation.constraints.NotNull;
+
+import io.airlift.configuration.Config;
 
 /**
  * Configuration read from etc/catalog/carbondata.properties

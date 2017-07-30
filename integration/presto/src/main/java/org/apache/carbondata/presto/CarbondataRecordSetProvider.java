@@ -17,44 +17,32 @@
 
 package org.apache.carbondata.presto;
 
+import javax.inject.Inject;
+import java.util.List;
+
+import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
+import org.apache.carbondata.core.scan.expression.Expression;
+import org.apache.carbondata.core.scan.model.CarbonQueryPlan;
+import org.apache.carbondata.core.scan.model.QueryModel;
+import org.apache.carbondata.hadoop.util.CarbonInputFormatUtil;
 import org.apache.carbondata.presto.impl.CarbonTableCacheModel;
 import org.apache.carbondata.presto.impl.CarbonTableReader;
+
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ConnectorSession;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.RecordSet;
 import com.facebook.presto.spi.connector.ConnectorRecordSetProvider;
 import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
-import com.facebook.presto.spi.predicate.Domain;
-import com.facebook.presto.spi.predicate.Range;
 import com.facebook.presto.spi.predicate.TupleDomain;
-import com.facebook.presto.spi.type.*;
 import com.google.common.collect.ImmutableList;
-import io.airlift.slice.Slice;
-import org.apache.carbondata.core.metadata.datatype.DataType;
-import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
-import org.apache.carbondata.core.scan.expression.ColumnExpression;
-import org.apache.carbondata.core.scan.expression.Expression;
-import org.apache.carbondata.core.scan.expression.LiteralExpression;
-import org.apache.carbondata.core.scan.expression.conditional.*;
-import org.apache.carbondata.core.scan.expression.logical.AndExpression;
-import org.apache.carbondata.core.scan.expression.logical.OrExpression;
-import org.apache.carbondata.core.scan.model.CarbonQueryPlan;
-import org.apache.carbondata.core.scan.model.QueryModel;
-import org.apache.carbondata.hadoop.util.CarbonInputFormatUtil;
 
-import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import static org.apache.carbondata.presto.Types.checkType;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 import static java.util.Objects.requireNonNull;
+import static org.apache.carbondata.presto.Types.checkType;
 
-public class CarbondataRecordSetProvider implements ConnectorRecordSetProvider {
+class CarbondataRecordSetProvider implements ConnectorRecordSetProvider {
 
   private final String connectorId;
   private final CarbonTableReader carbonTableReader;
@@ -72,7 +60,8 @@ public class CarbondataRecordSetProvider implements ConnectorRecordSetProvider {
 
     CarbondataSplit carbondataSplit =
         checkType(split, CarbondataSplit.class, "split is not class CarbondataSplit");
-    checkArgument(carbondataSplit.getConnectorId().equals(connectorId), "split is not for this connector");
+    checkArgument(carbondataSplit.getConnectorId().equals(connectorId),
+        "split is not for this connector");
 
     String targetCols = "";
     // Convert all columns handles
@@ -85,9 +74,7 @@ public class CarbondataRecordSetProvider implements ConnectorRecordSetProvider {
     // Build column projection(check the column order)
     if (targetCols.length() > 0) {
       targetCols = targetCols.substring(0, targetCols.length() - 1);
-    }
-    else
-    {
+    } else {
       targetCols = null;
     }
     //String cols = String.join(",", columns.stream().map(a -> ((CarbondataColumnHandle)a).getColumnName()).collect(Collectors.toList()));
@@ -108,15 +95,16 @@ public class CarbondataRecordSetProvider implements ConnectorRecordSetProvider {
     fillFilter2QueryModel(queryModel, carbondataSplit.getConstraints(), targetTable);
 
     // Return new record set
-    return new CarbondataRecordSet(targetTable, session, carbondataSplit,
-        handles.build(), queryModel);
+    return new CarbondataRecordSet(targetTable, session, carbondataSplit, handles.build(),
+        queryModel);
   }
 
   // Build filter for QueryModel
   private void fillFilter2QueryModel(QueryModel queryModel,
       TupleDomain<ColumnHandle> originalConstraint, CarbonTable carbonTable) {
 
-    Expression finalFilters=CarbondataFilterUtil.getFilters(carbonTable.getFactTableName().hashCode());
+    Expression finalFilters =
+        CarbondataFilterUtil.getFilters(carbonTable.getFactTableName().hashCode());
 
     // todo set into QueryModel
     CarbonInputFormatUtil.processFilterExpression(finalFilters, carbonTable);

@@ -17,7 +17,10 @@
 
 package org.apache.carbondata.presto;
 
+import java.util.List;
+
 import org.apache.carbondata.presto.impl.CarbonLocalInputSplit;
+
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ConnectorSplit;
 import com.facebook.presto.spi.HostAddress;
@@ -27,11 +30,9 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 
-import java.util.List;
-
 import static java.util.Objects.requireNonNull;
 
-public class CarbondataSplit implements ConnectorSplit {
+class CarbondataSplit implements ConnectorSplit {
 
   private final String connectorId;
   private final SchemaTableName schemaTableName;
@@ -40,7 +41,7 @@ public class CarbondataSplit implements ConnectorSplit {
   private final List<CarbondataColumnConstraint> rebuildConstraints;
   private final ImmutableList<HostAddress> addresses;
 
-  @JsonCreator public CarbondataSplit(@JsonProperty("connectorId") String connectorId,
+  @JsonCreator CarbondataSplit(@JsonProperty("connectorId") String connectorId,
       @JsonProperty("schemaTableName") SchemaTableName schemaTableName,
       @JsonProperty("constraints") TupleDomain<ColumnHandle> constraints,
       @JsonProperty("localInputSplit") CarbonLocalInputSplit localInputSplit,
@@ -53,23 +54,23 @@ public class CarbondataSplit implements ConnectorSplit {
     this.addresses = ImmutableList.of();
   }
 
-  @JsonProperty public String getConnectorId() {
+  @JsonProperty String getConnectorId() {
     return connectorId;
   }
 
-  @JsonProperty public SchemaTableName getSchemaTableName() {
+  @JsonProperty SchemaTableName getSchemaTableName() {
     return schemaTableName;
   }
 
-  @JsonProperty public TupleDomain<ColumnHandle> getConstraints() {
+  @JsonProperty TupleDomain<ColumnHandle> getConstraints() {
     return constraints;
   }
 
-  @JsonProperty public CarbonLocalInputSplit getLocalInputSplit() {
+  @JsonProperty CarbonLocalInputSplit getLocalInputSplit() {
     return localInputSplit;
   }
 
-  @JsonProperty public List<CarbondataColumnConstraint> getRebuildConstraints() {
+  @JsonProperty List<CarbondataColumnConstraint> getRebuildConstraints() {
     return rebuildConstraints;
   }
 

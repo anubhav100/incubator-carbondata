@@ -17,6 +17,8 @@
 
 package org.apache.carbondata.presto;
 
+import javax.inject.Inject;
+
 import org.apache.carbondata.presto.impl.CarbonTableConfig;
 import org.apache.carbondata.presto.impl.CarbonTableReader;
 
@@ -31,19 +33,17 @@ import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
 
-import javax.inject.Inject;
-
 import static com.facebook.presto.spi.type.TypeSignature.parseTypeSignature;
 import static com.google.common.base.Preconditions.checkArgument;
 import static io.airlift.configuration.ConfigBinder.configBinder;
 import static java.util.Objects.requireNonNull;
 
-public class CarbondataModule implements Module {
+class CarbondataModule implements Module {
 
   private final String connectorId;
   private final TypeManager typeManager;
 
-  public CarbondataModule(String connectorId, TypeManager typeManager) {
+  CarbondataModule(String connectorId, TypeManager typeManager) {
     this.connectorId = requireNonNull(connectorId, "connector id is null");
     this.typeManager = requireNonNull(typeManager, "typeManager is null");
   }

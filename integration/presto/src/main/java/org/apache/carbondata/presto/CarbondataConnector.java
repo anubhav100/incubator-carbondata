@@ -17,7 +17,12 @@
 
 package org.apache.carbondata.presto;
 
-import com.facebook.presto.spi.connector.*;
+import com.facebook.presto.spi.connector.Connector;
+import com.facebook.presto.spi.connector.ConnectorMetadata;
+import com.facebook.presto.spi.connector.ConnectorPageSourceProvider;
+import com.facebook.presto.spi.connector.ConnectorRecordSetProvider;
+import com.facebook.presto.spi.connector.ConnectorSplitManager;
+import com.facebook.presto.spi.connector.ConnectorTransactionHandle;
 import com.facebook.presto.spi.transaction.IsolationLevel;
 import io.airlift.bootstrap.LifeCycleManager;
 import io.airlift.log.Logger;
@@ -26,7 +31,7 @@ import static com.facebook.presto.spi.transaction.IsolationLevel.READ_COMMITTED;
 import static com.facebook.presto.spi.transaction.IsolationLevel.checkConnectorSupports;
 import static java.util.Objects.requireNonNull;
 
-public class CarbondataConnector implements Connector {
+class CarbondataConnector implements Connector {
 
   private static final Logger log = Logger.get(CarbondataConnector.class);
 
@@ -37,7 +42,7 @@ public class CarbondataConnector implements Connector {
   private final ClassLoader classLoader;
   private final ConnectorPageSourceProvider pageSourceProvider;
 
-  public CarbondataConnector(LifeCycleManager lifeCycleManager, CarbondataMetadata metadata,
+  CarbondataConnector(LifeCycleManager lifeCycleManager, CarbondataMetadata metadata,
       ConnectorSplitManager splitManager, ConnectorRecordSetProvider recordSetProvider,
       ClassLoader classLoader, ConnectorPageSourceProvider pageSourceProvider) {
     this.lifeCycleManager = requireNonNull(lifeCycleManager, "lifeCycleManager is null");
@@ -67,9 +72,7 @@ public class CarbondataConnector implements Connector {
     return recordSetProvider;
   }
 
-  @Override
-  public ConnectorPageSourceProvider getPageSourceProvider()
-  {
+  @Override public ConnectorPageSourceProvider getPageSourceProvider() {
     return pageSourceProvider;
   }
 

@@ -17,9 +17,16 @@
 
 package org.apache.carbondata.presto;
 
+import java.util.Map;
+
 import com.facebook.presto.spi.ConnectorHandleResolver;
 import com.facebook.presto.spi.classloader.ThreadContextClassLoader;
-import com.facebook.presto.spi.connector.*;
+import com.facebook.presto.spi.connector.Connector;
+import com.facebook.presto.spi.connector.ConnectorContext;
+import com.facebook.presto.spi.connector.ConnectorFactory;
+import com.facebook.presto.spi.connector.ConnectorPageSourceProvider;
+import com.facebook.presto.spi.connector.ConnectorRecordSetProvider;
+import com.facebook.presto.spi.connector.ConnectorSplitManager;
 import com.facebook.presto.spi.connector.classloader.ClassLoaderSafeConnectorPageSourceProvider;
 import com.facebook.presto.spi.connector.classloader.ClassLoaderSafeConnectorSplitManager;
 import com.google.common.base.Throwables;
@@ -28,20 +35,18 @@ import io.airlift.bootstrap.Bootstrap;
 import io.airlift.bootstrap.LifeCycleManager;
 import io.airlift.json.JsonModule;
 
-import java.util.Map;
-
 import static java.util.Objects.requireNonNull;
 
 /**
  * Build Carbondata Connector
  * It will be called by CarbondataPlugin
  */
-public class CarbondataConnectorFactory implements ConnectorFactory {
+class CarbondataConnectorFactory implements ConnectorFactory {
 
   private final String name;
   private final ClassLoader classLoader;
 
-  public CarbondataConnectorFactory(String connectorName, ClassLoader classLoader) {
+  CarbondataConnectorFactory(String connectorName, ClassLoader classLoader) {
     this.name = connectorName;
     this.classLoader = requireNonNull(classLoader, "classLoader is null");
   }
@@ -71,13 +76,13 @@ public class CarbondataConnectorFactory implements ConnectorFactory {
       ConnectorSplitManager splitManager = injector.getInstance(ConnectorSplitManager.class);
       ConnectorRecordSetProvider connectorRecordSet =
           injector.getInstance(ConnectorRecordSetProvider.class);
-      ConnectorPageSourceProvider connectorPageSource = injector.getInstance(ConnectorPageSourceProvider.class);
+      ConnectorPageSourceProvider connectorPageSource =
+          injector.getInstance(ConnectorPageSourceProvider.class);
 
       return new CarbondataConnector(lifeCycleManager, metadata,
           new ClassLoaderSafeConnectorSplitManager(splitManager, classLoader), connectorRecordSet,
           classLoader,
-          new ClassLoaderSafeConnectorPageSourceProvider(connectorPageSource, classLoader)
-      );
+          new ClassLoaderSafeConnectorPageSourceProvider(connectorPageSource, classLoader));
     } catch (Exception e) {
       throw Throwables.propagate(e);
     }

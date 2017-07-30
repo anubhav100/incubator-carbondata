@@ -17,16 +17,16 @@
 
 package org.apache.carbondata.presto;
 
-import com.google.inject.Inject;
-
 import java.util.Objects;
+
+import com.google.inject.Inject;
 
 import static java.util.Objects.requireNonNull;
 
-public class CarbondataConnectorId {
+class CarbondataConnectorId {
   private final String id;
 
-  @Inject public CarbondataConnectorId(String id) {
+  @Inject CarbondataConnectorId(String id) {
     this.id = requireNonNull(id, "id is null");
   }
 
@@ -39,14 +39,8 @@ public class CarbondataConnectorId {
   }
 
   @Override public boolean equals(Object obj) {
-    if (this == obj) {
-      return true;
-    }
+    return this == obj || !((obj == null) || (getClass() != obj.getClass())) && Objects
+        .equals(this.id, ((CarbondataConnectorId) obj).id);
 
-    if ((obj == null) || (getClass() != obj.getClass())) {
-      return false;
-    }
-
-    return Objects.equals(this.id, ((CarbondataConnectorId) obj).id);
   }
 }

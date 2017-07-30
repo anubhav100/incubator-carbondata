@@ -24,7 +24,6 @@ import java.util.List;
 
 import org.apache.carbondata.common.CarbonIterator;
 import org.apache.carbondata.core.scan.result.BatchResult;
-import org.apache.carbondata.presto.impl.PrestoDictionaryDecodeReadSupport;
 
 import com.facebook.presto.spi.RecordCursor;
 import com.facebook.presto.spi.type.DecimalType;
@@ -44,7 +43,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkState;
 import static io.airlift.slice.Slices.utf8Slice;
 
-public class CarbondataRecordCursor implements RecordCursor {
+class CarbondataRecordCursor implements RecordCursor {
 
   private static final Logger log = Logger.get(CarbondataRecordCursor.class);
   private final List<CarbondataColumnHandle> columnHandles;
@@ -60,7 +59,7 @@ public class CarbondataRecordCursor implements RecordCursor {
   private long nanoStart;
   private long nanoEnd;
 
-  public CarbondataRecordCursor(PrestoDictionaryDecodeReadSupport<Object[]> readSupport,
+  CarbondataRecordCursor(PrestoDictionaryDecodeReadSupport<Object[]> readSupport,
       CarbonIterator<BatchResult> carbonIterator, List<CarbondataColumnHandle> columnHandles,
       CarbondataSplit split) {
     this.columnCursor = carbonIterator;
@@ -91,33 +90,12 @@ public class CarbondataRecordCursor implements RecordCursor {
    * get next Row/Page
    */
   @Override public boolean advanceNextPosition() {
+    log.info("Getting The Next Page");
 
     if (nanoStart == 0) {
       nanoStart = System.nanoTime();
     }
-
-    if (columnCursor.hasNext()) {
-      BatchResult columnBatch = columnCursor.next();
-      List<Object[]> columnData = columnBatch.getRows();
-
-      /*
-      fields = new ArrayList<String>();
-      if(columnData != null && columnData.size() > 0)
-      {
-        for(Object value : columns){
-          if(value != null )
-          {
-            fields.add(value.toString());
-          } else {
-            fields.add(null);
-          }
-        }
-      }
-      totalBytes += columns.length;
-      */
-      return true;
-    }
-    return false;
+    return columnCursor.hasNext();
   }
 
   @Override public boolean getBoolean(int field) {
@@ -168,7 +146,6 @@ public class CarbondataRecordCursor implements RecordCursor {
               rescale(bigDecimalValue.unscaledValue(), bigDecimalValue.scale(), actual.getScale());
           Slice decimalSlice = Decimals.encodeUnscaledValue(unscaledDecimal);
           return utf8Slice(Decimals.toString(decimalSlice, actual.getScale()));
-          //return decimalSlice;
 
         }
 

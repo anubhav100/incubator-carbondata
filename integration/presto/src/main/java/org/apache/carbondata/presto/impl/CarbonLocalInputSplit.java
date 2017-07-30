@@ -17,10 +17,10 @@
 
 package org.apache.carbondata.presto.impl;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
-import java.util.List;
 
 /**
  * CarbonLocalInputSplit represents a block, it contains a set of blocklet.
@@ -39,6 +39,21 @@ public class CarbonLocalInputSplit {
    * Number of BlockLets in a block
    */
   private int numberOfBlocklets = 0;
+
+  @JsonCreator public CarbonLocalInputSplit(@JsonProperty("segmentId") String segmentId,
+      @JsonProperty("path") String path, @JsonProperty("start") long start,
+      @JsonProperty("length") long length, @JsonProperty("locations") List<String> locations,
+      @JsonProperty("numberOfBlocklets") int numberOfBlocklets/*,
+                                 @JsonProperty("tableBlockInfo") TableBlockInfo tableBlockInfo*/,
+      @JsonProperty("version") short version) {
+    this.path = path;
+    this.start = start;
+    this.length = length;
+    this.segmentId = segmentId;
+    this.locations = locations;
+    this.numberOfBlocklets = numberOfBlocklets;
+    this.version = version;
+  }
 
   @JsonProperty public short getVersion() {
     return version;
@@ -66,21 +81,5 @@ public class CarbonLocalInputSplit {
 
   @JsonProperty public int getNumberOfBlocklets() {
     return numberOfBlocklets;
-  }
-
-  @JsonCreator public CarbonLocalInputSplit(@JsonProperty("segmentId") String segmentId,
-      @JsonProperty("path") String path, @JsonProperty("start") long start,
-      @JsonProperty("length") long length, @JsonProperty("locations") List<String> locations,
-      @JsonProperty("numberOfBlocklets") int numberOfBlocklets/*,
-                                 @JsonProperty("tableBlockInfo") TableBlockInfo tableBlockInfo*/,
-      @JsonProperty("version") short version) {
-    this.path = path;
-    this.start = start;
-    this.length = length;
-    this.segmentId = segmentId;
-    this.locations = locations;
-    this.numberOfBlocklets = numberOfBlocklets;
-    //this.tableBlockInfo = tableBlockInfo;
-    this.version = version;
   }
 }

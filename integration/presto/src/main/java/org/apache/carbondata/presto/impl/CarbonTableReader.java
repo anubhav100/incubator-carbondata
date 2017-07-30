@@ -17,14 +17,31 @@
 
 package org.apache.carbondata.presto.impl;
 
-import com.facebook.presto.spi.SchemaTableName;
-import com.facebook.presto.spi.classloader.ThreadContextClassLoader;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.inject.Inject;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
-import org.apache.carbondata.core.datastore.*;
-import org.apache.carbondata.core.datastore.block.*;
+import org.apache.carbondata.core.datastore.DataRefNode;
+import org.apache.carbondata.core.datastore.DataRefNodeFinder;
+import org.apache.carbondata.core.datastore.IndexKey;
+import org.apache.carbondata.core.datastore.SegmentTaskIndexStore;
+import org.apache.carbondata.core.datastore.TableSegmentUniqueIdentifier;
+import org.apache.carbondata.core.datastore.block.AbstractIndex;
+import org.apache.carbondata.core.datastore.block.BlockletInfos;
+import org.apache.carbondata.core.datastore.block.SegmentProperties;
+import org.apache.carbondata.core.datastore.block.SegmentTaskIndexWrapper;
+import org.apache.carbondata.core.datastore.block.TableBlockInfo;
 import org.apache.carbondata.core.datastore.exception.IndexBuilderException;
 import org.apache.carbondata.core.datastore.filesystem.CarbonFile;
 import org.apache.carbondata.core.datastore.impl.FileFactory;
@@ -52,48 +69,56 @@ import org.apache.carbondata.core.util.CarbonUtil;
 import org.apache.carbondata.core.util.path.CarbonTablePath;
 import org.apache.carbondata.hadoop.CacheClient;
 import org.apache.carbondata.hadoop.util.CarbonInputFormatUtil;
+
+import com.facebook.presto.spi.SchemaTableName;
+import com.facebook.presto.spi.TableNotFoundException;
+import com.facebook.presto.spi.classloader.ThreadContextClassLoader;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.inject.Inject;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.*;
+import org.apache.hadoop.fs.BlockLocation;
+import org.apache.hadoop.fs.FileStatus;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
+import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.PathFilter;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.thrift.TBase;
 
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import static java.util.Objects.requireNonNull;
-import com.facebook.presto.spi.TableNotFoundException;
 
-/** CarbonTableReader will be a facade of these utils
- *
+/**
+ * CarbonTableReader will be a facade of these utils
  * 1:CarbonMetadata,(logic table)
  * 2:FileFactory, (physic table file)
  * 3:CarbonCommonFactory, (offer some )
  * 4:DictionaryFactory, (parse dictionary util)
- *
  * Currently, it is mainly used to parse metadata of tables under
  * the configured carbondata-store path and filter the relevant
  * input splits with given query predicates.
  */
 public class CarbonTableReader {
 
+  // default PathFilter, accepts files in carbondata format (with .carbondata extension).
+  private static final PathFilter DefaultFilter = new PathFilter() {
+    @Override public boolean accept(Path path) {
+      return CarbonTablePath.isCarbonDataFile(path.getName());
+    }
+  };
   private CarbonTableConfig config;
-
   /**
    * The names of the tables under the schema (this.carbonFileList).
    */
   private List<SchemaTableName> tableList;
-
   /**
    * carbonFileList represents the store path of the schema, which is configured as carbondata-store
    * in the CarbonData catalog file ($PRESTO_HOME$/etc/catalog/carbondata.properties).
    */
   private CarbonFile carbonFileList;
   private FileFactory.FileType fileType;
-
   /**
    * A cache for Carbon reader, with this cache,
    * metadata of a table is only read from file system once.
@@ -107,6 +132,7 @@ public class CarbonTableReader {
 
   /**
    * For presto worker node to initialize the metadata cache of a table.
+   *
    * @param table the name of the table and schema.
    * @return
    */
@@ -134,22 +160,17 @@ public class CarbonTableReader {
 
   /**
    * Return the schema names under a schema store path (this.carbonFileList).
+   *
    * @return
    */
   public List<String> getSchemaNames() {
     return updateSchemaList();
   }
 
-  // default PathFilter, accepts files in carbondata format (with .carbondata extension).
-  private static final PathFilter DefaultFilter = new PathFilter() {
-    @Override public boolean accept(Path path) {
-      return CarbonTablePath.isCarbonDataFile(path.getName());
-    }
-  };
-
   /**
    * Get the CarbonFile instance which represents the store path in the configuration, and assign it to
    * this.carbonFileList.
+   *
    * @return
    */
   public boolean updateCarbonFile() {
@@ -166,20 +187,22 @@ public class CarbonTableReader {
 
   /**
    * Return the schema names under a schema store path (this.carbonFileList).
+   *
    * @return
    */
-  public List<String> updateSchemaList() {
+  private List<String> updateSchemaList() {
     updateCarbonFile();
 
     if (carbonFileList != null) {
-      List<String> schemaList =
-          Stream.of(carbonFileList.listFiles()).map(a -> a.getName()).collect(Collectors.toList());
+      List<String> schemaList = Stream.of(carbonFileList.listFiles()).map(CarbonFile::getName)
+          .collect(Collectors.toList());
       return schemaList;
     } else return ImmutableList.of();
   }
 
   /**
    * Get the names of the tables in the given schema.
+   *
    * @param schema name of the schema
    * @return
    */
@@ -190,12 +213,14 @@ public class CarbonTableReader {
 
   /**
    * Get the names of the tables in the given schema.
+   *
    * @param schemaName name of the schema
    * @return
    */
   public Set<String> updateTableList(String schemaName) {
-    List<CarbonFile> schema = Stream.of(carbonFileList.listFiles()).filter(a -> schemaName.equals(a.getName()))
-        .collect(Collectors.toList());
+    List<CarbonFile> schema =
+        Stream.of(carbonFileList.listFiles()).filter(a -> schemaName.equals(a.getName()))
+            .collect(Collectors.toList());
     if (schema.size() > 0) {
       return Stream.of((schema.get(0)).listFiles()).map(a -> a.getName())
           .collect(Collectors.toSet());
@@ -204,6 +229,7 @@ public class CarbonTableReader {
 
   /**
    * Get the CarbonTable instance of the given table.
+   *
    * @param schemaTableName name of the given table.
    * @return
    */
@@ -243,6 +269,7 @@ public class CarbonTableReader {
   /**
    * Find the table with the given name and build a CarbonTable instance for it.
    * This method should be called after this.updateSchemaTables().
+   *
    * @param schemaTableName name of the given table.
    * @return
    */
@@ -257,6 +284,7 @@ public class CarbonTableReader {
 
   /**
    * Read the metadata of the given table and cache it in this.cc (CarbonTableReader cache).
+   *
    * @param table name of the given table.
    * @return the CarbonTable instance which contains all the needed metadata for a table.
    */
@@ -270,14 +298,14 @@ public class CarbonTableReader {
 
       // Step 1: get store path of the table and cache it.
       String storePath = config.getStorePath();
-        // create table identifier. the table id is randomly generated.
+      // create table identifier. the table id is randomly generated.
       cache.carbonTableIdentifier =
           new CarbonTableIdentifier(table.getSchemaName(), table.getTableName(),
               UUID.randomUUID().toString());
-        // get the store path of the table.
+      // get the store path of the table.
       cache.carbonTablePath =
           PathFactory.getInstance().getCarbonTablePath(storePath, cache.carbonTableIdentifier);
-        // cache the table
+      // cache the table
       cc.put(table, cache);
 
       //Step 2: read the metadata (tableInfo) of the table.
@@ -298,7 +326,7 @@ public class CarbonTableReader {
 
       // Step 3: convert format level TableInfo to code level TableInfo
       SchemaConverter schemaConverter = new ThriftWrapperSchemaConverterImpl();
-        // wrapperTableInfo is the code level information of a table in carbondata core, different from the Thrift TableInfo.
+      // wrapperTableInfo is the code level information of a table in carbondata core, different from the Thrift TableInfo.
       TableInfo wrapperTableInfo = schemaConverter
           .fromExternalToWrapperTableInfo(tableInfo, table.getSchemaName(), table.getTableName(),
               storePath);
@@ -321,8 +349,9 @@ public class CarbonTableReader {
 
   /**
    * Apply filters to the table and get valid input splits of the table.
+   *
    * @param tableCacheModel the table
-   * @param filters the filters
+   * @param filters         the filters
    * @return
    * @throws Exception
    */
@@ -378,8 +407,7 @@ public class CarbonTableReader {
 
       if (IUDTable) {
         // update not being performed on this table.
-        invalidBlockVOForSegmentId =
-            updateStatusManager.getInvalidTimestampRange(segmentNo);
+        invalidBlockVOForSegmentId = updateStatusManager.getInvalidTimestampRange(segmentNo);
       }
 
       try {
@@ -413,6 +441,7 @@ public class CarbonTableReader {
 
   /**
    * Get all the data blocks of a given segment.
+   *
    * @param filterExpressionProcessor
    * @param absoluteTableIdentifier
    * @param tablePath
@@ -471,6 +500,7 @@ public class CarbonTableReader {
 
   /**
    * Build and load the B-trees of the segment.
+   *
    * @param absoluteTableIdentifier
    * @param tablePath
    * @param segmentId
@@ -592,8 +622,9 @@ public class CarbonTableReader {
 
   /**
    * Get the input splits of a set of carbondata files.
+   *
    * @param fileStatusList the file statuses of the set of carbondata files.
-   * @param targetSystem hdfs FileSystem
+   * @param targetSystem   hdfs FileSystem
    * @return
    * @throws IOException
    */
@@ -626,8 +657,8 @@ public class CarbonTableReader {
               long bytesRemaining;
               int blkIndex;
               for (
-                  bytesRemaining = length;
-                  (double) bytesRemaining / (double) splitSize > 1.1D;// when there are more than one splits left.
+                  bytesRemaining = length; (double) bytesRemaining / (double) splitSize
+                  > 1.1D;// when there are more than one splits left.
                   bytesRemaining -= splitSize) {
                 blkIndex = this.getBlockIndex(blkLocations, length - bytesRemaining);
                 splits.add(this.makeSplit(path, length - bytesRemaining, splitSize,
@@ -662,6 +693,7 @@ public class CarbonTableReader {
   /**
    * Get all file statuses of the carbondata files with a segmentId in segmentsToConsider
    * under the tablePath, and add them to the result.
+   *
    * @param segmentsToConsider
    * @param tablePath
    * @param result
@@ -718,6 +750,7 @@ public class CarbonTableReader {
   /**
    * Get the FileStatus of all carbondata files under the path recursively,
    * and add the file statuses into the result
+   *
    * @param result
    * @param fs
    * @param path
@@ -744,6 +777,7 @@ public class CarbonTableReader {
   /**
    * Get the data blocks of a b tree. the root node of the b tree is abstractIndex.dataRefNode.
    * BTreeNode is a sub class of DataRefNode.
+   *
    * @param abstractIndex
    * @return
    */
@@ -806,9 +840,8 @@ public class CarbonTableReader {
     }
     BlockLocation last = blkLocations[blkLocations.length - 1];
     long fileLength = last.getOffset() + last.getLength() - 1;
-    throw new IllegalArgumentException("Offset " + offset +
-        " is outside of file (0.." +
-        fileLength + ")");
+    throw new IllegalArgumentException(
+        "Offset " + offset + " is outside of file (0.." + fileLength + ")");
   }
 
   /**

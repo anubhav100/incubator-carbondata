@@ -1,21 +1,4 @@
-
 package org.apache.carbondata.presto;
-
-import com.facebook.presto.spi.ColumnHandle;
-import com.facebook.presto.spi.predicate.Domain;
-import com.facebook.presto.spi.predicate.Range;
-import com.facebook.presto.spi.predicate.TupleDomain;
-import com.facebook.presto.spi.type.*;
-import com.google.common.collect.ImmutableList;
-import io.airlift.slice.Slice;
-import org.apache.carbondata.core.metadata.datatype.DataType;
-import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
-import org.apache.carbondata.core.scan.expression.ColumnExpression;
-import org.apache.carbondata.core.scan.expression.Expression;
-import org.apache.carbondata.core.scan.expression.LiteralExpression;
-import org.apache.carbondata.core.scan.expression.conditional.*;
-import org.apache.carbondata.core.scan.expression.logical.AndExpression;
-import org.apache.carbondata.core.scan.expression.logical.OrExpression;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,11 +6,44 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.carbondata.core.metadata.datatype.DataType;
+import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
+import org.apache.carbondata.core.scan.expression.ColumnExpression;
+import org.apache.carbondata.core.scan.expression.Expression;
+import org.apache.carbondata.core.scan.expression.LiteralExpression;
+import org.apache.carbondata.core.scan.expression.conditional.EqualToExpression;
+import org.apache.carbondata.core.scan.expression.conditional.GreaterThanEqualToExpression;
+import org.apache.carbondata.core.scan.expression.conditional.GreaterThanExpression;
+import org.apache.carbondata.core.scan.expression.conditional.InExpression;
+import org.apache.carbondata.core.scan.expression.conditional.LessThanEqualToExpression;
+import org.apache.carbondata.core.scan.expression.conditional.LessThanExpression;
+import org.apache.carbondata.core.scan.expression.conditional.ListExpression;
+import org.apache.carbondata.core.scan.expression.logical.AndExpression;
+import org.apache.carbondata.core.scan.expression.logical.OrExpression;
+
+import com.facebook.presto.spi.ColumnHandle;
+import com.facebook.presto.spi.predicate.Domain;
+import com.facebook.presto.spi.predicate.Range;
+import com.facebook.presto.spi.predicate.TupleDomain;
+import com.facebook.presto.spi.type.BigintType;
+import com.facebook.presto.spi.type.BooleanType;
+import com.facebook.presto.spi.type.DateType;
+import com.facebook.presto.spi.type.DecimalType;
+import com.facebook.presto.spi.type.DoubleType;
+import com.facebook.presto.spi.type.IntegerType;
+import com.facebook.presto.spi.type.SmallintType;
+import com.facebook.presto.spi.type.TimestampType;
+import com.facebook.presto.spi.type.Type;
+import com.facebook.presto.spi.type.VarcharType;
+import com.google.common.collect.ImmutableList;
+import io.airlift.slice.Slice;
+
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class CarbondataFilterUtil {
+class CarbondataFilterUtil {
 
-  private static Map<Integer,Expression> filterMap= new HashMap<>();
+  private static Map<Integer, Expression> filterMap = new HashMap<>();
+
   private static DataType Spi2CarbondataTypeMapper(CarbondataColumnHandle carbondataColumnHandle) {
     Type colType = carbondataColumnHandle.getColumnType();
     if (colType == BooleanType.BOOLEAN) return DataType.BOOLEAN;
@@ -50,7 +66,7 @@ public class CarbondataFilterUtil {
    * @param carbonTable
    * @return
    */
-  public static Expression parseFilterExpression(TupleDomain<ColumnHandle> originalConstraint,
+  static Expression parseFilterExpression(TupleDomain<ColumnHandle> originalConstraint,
       CarbonTable carbonTable) {
     ImmutableList.Builder<Expression> filters = ImmutableList.builder();
 
@@ -67,12 +83,6 @@ public class CarbondataFilterUtil {
 
       domain = originalConstraint.getDomains().get().get(c);
       checkArgument(domain.getType().isOrderable(), "Domain type must be orderable");
-
-      if (domain.getValues().isNone()) {
-      }
-
-      if (domain.getValues().isAll()) {
-      }
 
       List<Object> singleValues = new ArrayList<>();
       List<Expression> disjuncts = new ArrayList<>();
@@ -134,16 +144,15 @@ public class CarbondataFilterUtil {
               new LiteralExpression(((Slice) singleValues.get(0)).toStringUtf8(), coltype));
         } else if (coltype.equals(DataType.TIMESTAMP) || coltype.equals(DataType.DATE)) {
           Long value = (Long) singleValues.get(0) * 1000;
-          ex = new EqualToExpression(colExpression,
-              new LiteralExpression(value, coltype));
+          ex = new EqualToExpression(colExpression, new LiteralExpression(value, coltype));
         } else ex = new EqualToExpression(colExpression,
             new LiteralExpression(singleValues.get(0), coltype));
         filters.add(ex);
       } else if (singleValues.size() > 1) {
-        ListExpression candidates = null;
-        List<Expression> exs = singleValues.stream().map((a) -> {
-          return new LiteralExpression(ConvertDataByType(a, type), coltype);
-        }).collect(Collectors.toList());
+        ListExpression candidates;
+        List<Expression> exs = singleValues.stream()
+            .map((a) -> new LiteralExpression(ConvertDataByType(a, type), coltype))
+            .collect(Collectors.toList());
         candidates = new ListExpression(exs);
 
         if (candidates != null) filters.add(new InExpression(colExpression, candidates));
@@ -181,11 +190,12 @@ public class CarbondataFilterUtil {
 
     return rawdata;
   }
-  public static Expression getFilters(Integer key) {
-            return filterMap.get(key);
-        }
 
-         public static void setFilter(Integer tableId, Expression filter) {
-            filterMap.put(tableId,filter);
-        }
+  static Expression getFilters(Integer key) {
+    return filterMap.get(key);
+  }
+
+  static void setFilter(Integer tableId, Expression filter) {
+    filterMap.put(tableId, filter);
+  }
 }

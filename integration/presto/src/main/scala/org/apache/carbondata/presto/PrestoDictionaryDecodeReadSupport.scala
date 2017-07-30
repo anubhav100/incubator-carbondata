@@ -1,4 +1,4 @@
-package org.apache.carbondata.presto.impl
+package org.apache.carbondata.presto
 
 import org.apache.carbondata.core.cache.dictionary.{Dictionary, DictionaryColumnUniqueIdentifier}
 import org.apache.carbondata.core.cache.{Cache, CacheProvider, CacheType}

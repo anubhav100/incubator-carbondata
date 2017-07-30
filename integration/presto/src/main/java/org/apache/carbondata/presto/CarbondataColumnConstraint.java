@@ -37,7 +37,7 @@ public class CarbondataColumnConstraint {
   private final boolean invertedindexed;
   private Optional<Domain> domain;
 
-  @JsonCreator public CarbondataColumnConstraint(@JsonProperty("name") String name,
+  @JsonCreator CarbondataColumnConstraint(@JsonProperty("name") String name,
       @JsonProperty("domain") Optional<Domain> domain,
       @JsonProperty("invertedindexed") boolean invertedindexed) {
     this.name = requireNonNull(name, "name is null");

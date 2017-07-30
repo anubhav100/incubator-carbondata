@@ -17,24 +17,24 @@
 
 package org.apache.carbondata.presto;
 
+import java.util.Objects;
+
 import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.ConnectorTableLayoutHandle;
 import com.facebook.presto.spi.predicate.TupleDomain;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.Objects;
-
-//import static com.google.common.base.MoreObjects.toStringHelper;
 import static com.google.common.base.Objects.toStringHelper;
 import static java.util.Objects.requireNonNull;
 
-public class CarbondataTableLayoutHandle implements ConnectorTableLayoutHandle {
+//import static com.google.common.base.MoreObjects.toStringHelper;
+
+class CarbondataTableLayoutHandle implements ConnectorTableLayoutHandle {
   private final CarbondataTableHandle table;
   private final TupleDomain<ColumnHandle> constraint;
 
-  @JsonCreator
-  public CarbondataTableLayoutHandle(@JsonProperty("table") CarbondataTableHandle table,
+  @JsonCreator CarbondataTableLayoutHandle(@JsonProperty("table") CarbondataTableHandle table,
       @JsonProperty("constraint") TupleDomain<ColumnHandle> constraint) {
     this.table = requireNonNull(table, "table is null");
     this.constraint = requireNonNull(constraint, "constraint is null");
@@ -44,7 +44,7 @@ public class CarbondataTableLayoutHandle implements ConnectorTableLayoutHandle {
     return table;
   }
 
-  @JsonProperty public TupleDomain<ColumnHandle> getConstraint() {
+  @JsonProperty TupleDomain<ColumnHandle> getConstraint() {
     return constraint;
   }
 

@@ -17,18 +17,19 @@
 
 package org.apache.carbondata.presto;
 
+import org.apache.carbondata.core.datastore.impl.FileFactory;
+
 import com.facebook.presto.spi.Plugin;
 import com.facebook.presto.spi.connector.ConnectorFactory;
 import com.google.common.collect.ImmutableList;
-import org.apache.carbondata.core.datastore.impl.FileFactory;
 
 public class CarbondataPlugin implements Plugin {
 
-  @Override public Iterable<ConnectorFactory> getConnectorFactories() {
-    return ImmutableList.of(new CarbondataConnectorFactory("carbondata", getClassLoader()));
-  }
-
   private static ClassLoader getClassLoader() {
     return FileFactory.class.getClassLoader();
+  }
+
+  @Override public Iterable<ConnectorFactory> getConnectorFactories() {
+    return ImmutableList.of(new CarbondataConnectorFactory("carbondata", getClassLoader()));
   }
 }
