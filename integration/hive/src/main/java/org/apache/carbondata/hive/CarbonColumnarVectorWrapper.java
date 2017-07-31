@@ -106,8 +106,8 @@ private void initilizedVector(){
     if (!filteredRows[rowId]) {
       if(this.columnVector instanceof LongColumnVector)
         longColumnVector.fill((long) value);
-      else if(this.columnVector instanceof BytesColumnVector)
-        System.out.println("Inside byte column vector");
+     /* else if(this.columnVector instanceof BytesColumnVector)
+        System.out.println("Inside byte column vector");*/
       //columnVector.putInt(counter++, value);
     }
   }
@@ -181,6 +181,7 @@ private void initilizedVector(){
   @Override public void putBytes(int rowId, byte[] value) {
     if (!filteredRows[rowId]) {
      // columnVector.putByteArray(counter++, value);
+      bytesColumnVector.fill(value);
     }
   }
 

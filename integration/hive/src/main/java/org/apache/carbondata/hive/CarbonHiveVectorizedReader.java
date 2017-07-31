@@ -45,13 +45,7 @@ import org.apache.carbondata.core.util.CarbonUtil;
 import org.apache.carbondata.spark.util.CarbonScalaUtil;
 
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.ql.exec.vector.BytesColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.DoubleColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.LongColumnVector;
-import org.apache.hadoop.hive.ql.exec.vector.VectorColumnAssign;
-import org.apache.hadoop.hive.ql.exec.vector.VectorColumnAssignFactory;
-import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatch;
-import org.apache.hadoop.hive.ql.exec.vector.VectorizedRowBatchCtx;
+import org.apache.hadoop.hive.ql.exec.vector.*;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.serde.serdeConstants;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
@@ -182,10 +176,13 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
 
       if (nextKeyValue()) {
         Object obj = getCurrentValue();
+        VectorizedRowBatch vrb = (VectorizedRowBatch) obj;
+//        valueObj.set(vrb);
         System.out.print(obj);
         while (outputBatch.size < maxSize) {
           System.out.println("-------------------------------" + valueObj.get());
-          Writable[] writables = valueObj.get();
+          Writable[] writables = new VectorizedRowBatch[vrb.numCols];
+          writables[0] = vrb;
 
           if (null == assigners) {
             // Normally we'd build the assigners from the rowBatchContext.rowOI, but with Parquet
@@ -208,6 +205,12 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
 
     return outputBatch.size > 0;
 
+  }
+
+  private void fillWritables(VectorizedRowBatch vrb, Writable[] writables) {
+    for (ColumnVector cv: vrb.cols) {
+//      for(int i=0; i<objInspector.)
+    }
   }
 
   @Override public NullWritable createKey() {
@@ -352,6 +355,7 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
   private void enableReturningBatches() {
     returnColumnarBatch = true;
   }
+
 
   /**
    * Advances to the next batch of rows. Returns false if there are no more.
