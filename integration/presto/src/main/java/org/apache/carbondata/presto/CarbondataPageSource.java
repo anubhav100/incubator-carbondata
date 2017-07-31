@@ -36,7 +36,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Carbondata Page Source class for custom Carbondata RecordSet Iteration.
  */
-public class CarbondataPageSource implements ConnectorPageSource {
+class CarbondataPageSource implements ConnectorPageSource {
 
   private static final int ROWS_PER_REQUEST = 4096;
   private final RecordCursor cursor;
@@ -47,11 +47,11 @@ public class CarbondataPageSource implements ConnectorPageSource {
   private CarbonIterator<BatchResult> columnCursor;
   private org.apache.carbondata.presto.impl.PrestoDictionaryDecodeReadSupport<Object[]> readSupport;
 
-  public CarbondataPageSource(RecordSet recordSet) {
+  CarbondataPageSource(RecordSet recordSet) {
     this(requireNonNull(recordSet, "recordSet is null").getColumnTypes(), recordSet.cursor());
   }
 
-  public CarbondataPageSource(List<Type> types, RecordCursor cursor) {
+  private CarbondataPageSource(List<Type> types, RecordCursor cursor) {
     this.cursor = requireNonNull(cursor, "cursor is null");
     this.types = unmodifiableList(new ArrayList<>(requireNonNull(types, "types is null")));
     this.pageBuilder = new PageBuilder(this.types);
@@ -140,7 +140,6 @@ public class CarbondataPageSource implements ConnectorPageSource {
         if (types.size() == 0) {
           Object[] data = columnData.get(0);
           pageBuilder.declarePositions(data.length);
-          System.out.println("Number of Rows in PageSource " + data.length);
         }
       }
     }
@@ -198,12 +197,12 @@ public class CarbondataPageSource implements ConnectorPageSource {
     return decimal;
   }
 
-  public boolean getBoolean(Object value) {
+  private boolean getBoolean(Object value) {
     return (Boolean) value;
   }
 
   private long getLong(Object obj, Type actual) {
-    Long timeStr = 0L;
+    Long timeStr;
     if (obj instanceof Integer) {
       timeStr = ((Integer) obj).longValue();
     } else if (obj instanceof Long) {
@@ -214,7 +213,6 @@ public class CarbondataPageSource implements ConnectorPageSource {
     if (actual instanceof TimestampType) {
       return new Timestamp(timeStr).getTime() / 1000;
     }
-    //suppose the
     return timeStr;
   }
 
@@ -223,17 +221,10 @@ public class CarbondataPageSource implements ConnectorPageSource {
   }
 
   private Slice getSlice(Object value, Type type) {
-    Type decimalType = type;
-    if (decimalType instanceof DecimalType) {
-      DecimalType actual = (DecimalType) decimalType;
-     /* CarbondataColumnHandle carbondataColumnHandle = columnHandles.get(field);
-      if(carbondataColumnHandle.getPrecision() > 0 ) {
-        checkFieldType(field, DecimalType.createDecimalType(carbondataColumnHandle.getPrecision(), carbondataColumnHandle.getScale()));
-      } else {
-        checkFieldType(field, DecimalType.createDecimalType());
-      }*/
+    if (type instanceof DecimalType) {
+      DecimalType actual = (DecimalType) type;
       BigDecimal bigDecimalValue = new BigDecimal(value.toString());
-      if (isShortDecimal(decimalType)) {
+      if (isShortDecimal(type)) {
         return utf8Slice(Decimals.toString(bigDecimalValue.longValue(), actual.getScale()));
       } else {
         if (bigDecimalValue.scale() > actual.getScale()) {
@@ -242,13 +233,11 @@ public class CarbondataPageSource implements ConnectorPageSource {
                   bigDecimalValue.scale());
           Slice decimalSlice = Decimals.encodeUnscaledValue(unscaledDecimal);
           return utf8Slice(Decimals.toString(decimalSlice, actual.getScale()));
-          //return decimalSlice;
         } else {
           BigInteger unscaledDecimal =
               rescale(bigDecimalValue.unscaledValue(), bigDecimalValue.scale(), actual.getScale());
           Slice decimalSlice = Decimals.encodeUnscaledValue(unscaledDecimal);
           return utf8Slice(Decimals.toString(decimalSlice, actual.getScale()));
-          //return decimalSlice;
 
         }
 

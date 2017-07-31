@@ -22,7 +22,7 @@ import org.apache.carbondata.core.scan.model.QueryModel;
 
 public class PrestoQueryExecutorFactory {
 
-  public static QueryExecutor getQueryExecutor(QueryModel queryModel) {
+  public static QueryExecutor getQueryExecutor() {
     return new ColumnDetailQueryExecutor();
   }
 }

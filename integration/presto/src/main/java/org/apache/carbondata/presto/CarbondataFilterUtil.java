@@ -1,3 +1,18 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ */
 
 package org.apache.carbondata.presto;
 
@@ -25,7 +40,7 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-public class CarbondataFilterUtil {
+class CarbondataFilterUtil {
 
   private static Map<Integer,Expression> filterMap= new HashMap<>();
   private static DataType Spi2CarbondataTypeMapper(CarbondataColumnHandle carbondataColumnHandle) {
@@ -50,7 +65,7 @@ public class CarbondataFilterUtil {
    * @param carbonTable
    * @return
    */
-  public static Expression parseFilterExpression(TupleDomain<ColumnHandle> originalConstraint,
+  static Expression parseFilterExpression(TupleDomain<ColumnHandle> originalConstraint,
       CarbonTable carbonTable) {
     ImmutableList.Builder<Expression> filters = ImmutableList.builder();
 
@@ -67,12 +82,6 @@ public class CarbondataFilterUtil {
 
       domain = originalConstraint.getDomains().get().get(c);
       checkArgument(domain.getType().isOrderable(), "Domain type must be orderable");
-
-      if (domain.getValues().isNone()) {
-      }
-
-      if (domain.getValues().isAll()) {
-      }
 
       List<Object> singleValues = new ArrayList<>();
       List<Expression> disjuncts = new ArrayList<>();
@@ -146,7 +155,7 @@ public class CarbondataFilterUtil {
         }).collect(Collectors.toList());
         candidates = new ListExpression(exs);
 
-        if (candidates != null) filters.add(new InExpression(colExpression, candidates));
+        filters.add(new InExpression(colExpression, candidates));
       } else if (disjuncts.size() > 0) {
         if (disjuncts.size() > 1) {
           Expression finalFilters = new OrExpression(disjuncts.get(0), disjuncts.get(1));
@@ -181,11 +190,11 @@ public class CarbondataFilterUtil {
 
     return rawdata;
   }
-  public static Expression getFilters(Integer key) {
+  static Expression getFilters(Integer key) {
             return filterMap.get(key);
         }
 
-         public static void setFilter(Integer tableId, Expression filter) {
+         static void setFilter(Integer tableId, Expression filter) {
             filterMap.put(tableId,filter);
         }
 }

@@ -79,7 +79,7 @@ object PrestoBenchMarking {
 
     import scala.collection.JavaConverters._
 
-   /* val prestoProperties: util.Map[String, String] = Map(("http-server.http.port", "8086")).asJava
+    val prestoProperties: util.Map[String, String] = Map(("http-server.http.port", "8086")).asJava
 
     logger.info("======== STARTING PRESTO SERVER ========")
     val queryRunner: DistributedQueryRunner = createQueryRunner(
@@ -91,7 +91,7 @@ object PrestoBenchMarking {
 
     // Step 1: Create Connection Strings*/
     val JDBC_DRIVER = "com.facebook.presto.jdbc.PrestoDriver"
-    val DB_URL = "jdbc:presto://192.168.2.217:8086/carbondata/default"
+    val DB_URL = "jdbc:presto://localhost:8086/carbondata/default"
 
     // The database Credentials
     val USER = "username"

@@ -47,9 +47,7 @@ import com.facebook.presto.spi.type.Type;
 
 import static org.apache.carbondata.presto.Types.checkType;
 
-//import org.apache.carbondata.hadoop.readsupport.impl.DictionaryDecodedReadSupportImpl;
-
-public class CarbondataRecordSet implements RecordSet {
+class CarbondataRecordSet implements RecordSet {
 
   private CarbonTable carbonTable;
   private TupleDomain<ColumnHandle> originalConstraint;
@@ -62,8 +60,8 @@ public class CarbondataRecordSet implements RecordSet {
 
   private PrestoDictionaryDecodeReadSupport readSupport;
 
-  public CarbondataRecordSet(CarbonTable carbonTable, ConnectorSession session,
-      ConnectorSplit split, List<CarbondataColumnHandle> columns, QueryModel queryModel) {
+  CarbondataRecordSet(CarbonTable carbonTable, ConnectorSession session, ConnectorSplit split,
+      List<CarbondataColumnHandle> columns, QueryModel queryModel) {
     this.carbonTable = carbonTable;
     this.split = checkType(split, CarbondataSplit.class, "connectorSplit");
     this.originalConstraint = this.split.getConstraints();
@@ -79,7 +77,7 @@ public class CarbondataRecordSet implements RecordSet {
   }
 
   @Override public List<Type> getColumnTypes() {
-    return columns.stream().map(a -> a.getColumnType()).collect(Collectors.toList());
+    return columns.stream().map(CarbondataColumnHandle::getColumnType).collect(Collectors.toList());
   }
 
   /**
@@ -98,19 +96,15 @@ public class CarbondataRecordSet implements RecordSet {
     queryModel.setColumnCollector(true);
     queryModel.setTableBlockInfos(tableBlockInfoList);
 
-    queryExecutor = PrestoQueryExecutorFactory.getQueryExecutor(queryModel);
+    queryExecutor = PrestoQueryExecutorFactory.getQueryExecutor();
 
     CarbonProperties.getInstance()
      .addProperty("carbon.detail.batch.size", "4096");
 
-    //queryModel.setQueryId(queryModel.getQueryId() + "_" + split.getLocalInputSplit().getSegmentId());
     try {
       readSupport
           .initialize(queryModel.getProjectionColumns(), queryModel.getAbsoluteTableIdentifier());
-      long startTime = System.currentTimeMillis();
       CarbonIterator<BatchResult> carbonIterator = queryExecutor.execute(queryModel);
-      System.out.println("Time taken to execute the query on CarbonData " +
-          (System.currentTimeMillis() - startTime));
       return new CarbondataRecordCursor(readSupport, carbonIterator, columns, split);
     } catch (Exception ex) {
       throw new RuntimeException(ex.getMessage(), ex);

@@ -48,32 +48,32 @@ public class ColumnBasedResultCollector extends AbstractScannedResultCollector {
 
   protected QueryMeasure[] queryMeasures;
 
-  protected DirectDictionaryGenerator[] directDictionaryGenerators;
+  private DirectDictionaryGenerator[] directDictionaryGenerators;
 
   /**
    * query order
    */
   protected int[] order;
 
-  protected int[] actualIndexInSurrogateKey;
+  private int[] actualIndexInSurrogateKey;
 
-  protected boolean[] dictionaryEncodingArray;
+  private boolean[] dictionaryEncodingArray;
 
-  protected boolean[] directDictionaryEncodingArray;
+  private boolean[] directDictionaryEncodingArray;
 
-  protected boolean[] implictColumnArray;
+  private boolean[] implictColumnArray;
 
-  protected boolean[] complexDataTypeArray;
+  private boolean[] complexDataTypeArray;
 
-  protected int dictionaryColumnIndex;
-  protected int noDictionaryColumnIndex;
-  protected int complexTypeColumnIndex;
+  private int dictionaryColumnIndex;
+  private int noDictionaryColumnIndex;
+  private int complexTypeColumnIndex;
 
-  protected boolean isDimensionExists;
+  private boolean isDimensionExists;
 
-  protected Map<Integer, GenericQueryType> comlexDimensionInfoMap;
+  private Map<Integer, GenericQueryType> comlexDimensionInfoMap;
 
-  protected int numberOfBatches = 0;
+  private int numberOfBatches = 0;
 
   public ColumnBasedResultCollector(BlockExecutionInfo blockExecutionInfos) {
     super(blockExecutionInfos);
@@ -138,9 +138,7 @@ public class ColumnBasedResultCollector extends AbstractScannedResultCollector {
     if (rowCounter < batchSize) {
       Object[][] matrix_temp = new Object[noOfColumns][rowCounter];
       for (int i = 0; i < noOfColumns; i++) {
-        for (int j = 0; j < rowCounter; j++) {
-          matrix_temp[i][j] = matrix[i][j];
-        }
+        System.arraycopy(matrix[i], 0, matrix_temp[i], 0, rowCounter);
       }
       columnarData = new ArrayList<>(Arrays.asList(matrix_temp));
     } else {
@@ -155,7 +153,7 @@ public class ColumnBasedResultCollector extends AbstractScannedResultCollector {
     return columnarData;
   }
 
-  protected void fillDimensionData(AbstractScannedResult scannedResult, int[] surrogateResult,
+  private void fillDimensionData(AbstractScannedResult scannedResult, int[] surrogateResult,
       byte[][] noDictionaryKeys, byte[][] complexTypeKeyArray,
       Map<Integer, GenericQueryType> comlexDimensionInfoMap, Object[] row, int i) {
     if (!dictionaryEncodingArray[i]) {
@@ -190,7 +188,7 @@ public class ColumnBasedResultCollector extends AbstractScannedResultCollector {
     }
   }
 
-  protected void fillMeasureData(AbstractScannedResult scannedResult, Object[] row) {
+  private void fillMeasureData(AbstractScannedResult scannedResult, Object[] row) {
     if (measureInfo.getMeasureDataTypes().length > 0) {
       Object[] msrValues = new Object[measureInfo.getMeasureDataTypes().length];
       fillMeasureData(msrValues, 0, scannedResult);
@@ -200,12 +198,12 @@ public class ColumnBasedResultCollector extends AbstractScannedResultCollector {
     }
   }
 
-  protected void initDimensionAndMeasureIndexesForFillingData() {
+  private void initDimensionAndMeasureIndexesForFillingData() {
     List<Integer> dictionaryIndexes = new ArrayList<Integer>();
-    for (int i = 0; i < queryDimensions.length; i++) {
-      if (queryDimensions[i].getDimension().hasEncoding(Encoding.DICTIONARY) || queryDimensions[i]
+    for (QueryDimension queryDimension : queryDimensions) {
+      if (queryDimension.getDimension().hasEncoding(Encoding.DICTIONARY) || queryDimension
           .getDimension().hasEncoding(Encoding.DIRECT_DICTIONARY)) {
-        dictionaryIndexes.add(queryDimensions[i].getDimension().getOrdinal());
+        dictionaryIndexes.add(queryDimension.getDimension().getOrdinal());
       }
     }
     int[] primitive =
@@ -213,11 +211,11 @@ public class ColumnBasedResultCollector extends AbstractScannedResultCollector {
     Arrays.sort(primitive);
     actualIndexInSurrogateKey = new int[dictionaryIndexes.size()];
     int index = 0;
-    for (int i = 0; i < queryDimensions.length; i++) {
-      if (queryDimensions[i].getDimension().hasEncoding(Encoding.DICTIONARY) || queryDimensions[i]
+    for (QueryDimension queryDimension : queryDimensions) {
+      if (queryDimension.getDimension().hasEncoding(Encoding.DICTIONARY) || queryDimension
           .getDimension().hasEncoding(Encoding.DIRECT_DICTIONARY)) {
         actualIndexInSurrogateKey[index++] =
-            Arrays.binarySearch(primitive, queryDimensions[i].getDimension().getOrdinal());
+            Arrays.binarySearch(primitive, queryDimension.getDimension().getOrdinal());
       }
     }
 
