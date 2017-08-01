@@ -179,20 +179,19 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
         Object obj = getCurrentValue();
         VectorizedRowBatch vrb = (VectorizedRowBatch) obj;
 
-//        valueObj.set(vrb);
+        // valueObj.set(vrb);
         System.out.print(obj);
         while (outputBatch.size < maxSize) {
           System.out.println("-------------------------------" + valueObj.get());
-//        writable = ((LongColumnVector) ((VectorizedRowBatch) obj).cols[0]).getWritableObject(0);
-//          Writable[] writables = new VectorizedRowBatch[vrb.numCols];
-          ArrayList<Writable> writablesList = new ArrayList<>(5);// = new ArrayWritable[((VectorizedRowBatch) obj).numCols];
-          int num=0;
+          ArrayList<Writable> writablesList = new ArrayList<>(5);
+          int num = 0;
           for(ColumnVector cv : ((VectorizedRowBatch) obj).cols){
+            if(cv.getWritableObject(0) != null)
             writablesList.add(cv.getWritableObject(0));
-            num++;
+              System.out.println("Running for column : " + num);
+              num++;
           }
           Writable[] writables = (Writable[]) writablesList.toArray();
-//          writables[0] = vrb;
           if (null == assigners) {
             // Normally we'd build the assigners from the rowBatchContext.rowOI, but with Parquet
             // we have a discrepancy between the metadata type (Eg. tinyint -> BYTE) and
