@@ -184,9 +184,11 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
         while (outputBatch.size < maxSize) {
           System.out.println("-------------------------------" + valueObj.get());
           ArrayList<Writable> writablesList = new ArrayList<>(5);
-          for(ColumnVector cv : ((VectorizedRowBatch) obj).cols){
+          for(int i=0; i<((VectorizedRowBatch) obj).cols.length -3; i++) {
+          ColumnVector cv = ((VectorizedRowBatch) obj).cols[i];
+//          for(ColumnVector cv : ((VectorizedRowBatch) obj).cols){
             int entryCount = 0;
-            while(cv.getWritableObject(entryCount) != null) {
+            while(this.carbonColumnarBatch.getRowCounter() > entryCount) {
 //              Writable writable = cv.getWritableObject(entryCount);
 //              if(writable instanceof LongWritable)
               writablesList.add(cv.getWritableObject(entryCount));
@@ -194,7 +196,8 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
               entryCount++;
             }
           }
-          Writable[] writables = (Writable[]) writablesList.toArray();
+          Writable[] writables = writablesList.toArray(new Writable[writablesList.size()]);
+
           if (null == assigners) {
             // Normally we'd build the assigners from the rowBatchContext.rowOI, but with Parquet
             // we have a discrepancy between the metadata type (Eg. tinyint -> BYTE) and
@@ -204,7 +207,6 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
 
           for (int i = 0; i < writables.length; ++i) {
             assigners[i].assignObjectValue(writables[i], outputBatch.size);
-
           }
           ++outputBatch.size;
         }

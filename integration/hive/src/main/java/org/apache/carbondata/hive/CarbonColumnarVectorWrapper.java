@@ -104,14 +104,19 @@ private void initilizedVector(){
 
   @Override public void putInt(int rowId, int value) {
     if (!filteredRows[rowId]) {
-      if(this.columnVector instanceof LongColumnVector) {
+      if (this.columnVector instanceof LongColumnVector) {
         longColumnVector.noNulls = true;
         longColumnVector.isRepeating = false;
         longColumnVector.vector[rowId] = (long) value;
+      } else if (this.columnVector instanceof BytesColumnVector) {
+        System.out.println("Inside byte column vector" + value + " :::: " + (value+"").getBytes());
+        bytesColumnVector.noNulls = true;
+        bytesColumnVector.isRepeating = false;
+        bytesColumnVector.vector[rowId] = (value + "").getBytes();
+        //columnVector.putInt(counter++, value);
+      } else {
+        System.out.println("Vector Implementation Unavailable");
       }
-      else if(this.columnVector instanceof BytesColumnVector)
-        System.out.println("Inside byte column vector");
-      //columnVector.putInt(counter++, value);
     }
   }
 
