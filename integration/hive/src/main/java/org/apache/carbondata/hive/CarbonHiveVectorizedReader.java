@@ -53,6 +53,7 @@ import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 import org.apache.hadoop.io.ArrayWritable;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.FileSplit;
@@ -177,13 +178,21 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
       if (nextKeyValue()) {
         Object obj = getCurrentValue();
         VectorizedRowBatch vrb = (VectorizedRowBatch) obj;
+
 //        valueObj.set(vrb);
         System.out.print(obj);
         while (outputBatch.size < maxSize) {
           System.out.println("-------------------------------" + valueObj.get());
-          Writable[] writables = new VectorizedRowBatch[vrb.numCols];
-          writables[0] = vrb;
-
+//        writable = ((LongColumnVector) ((VectorizedRowBatch) obj).cols[0]).getWritableObject(0);
+//          Writable[] writables = new VectorizedRowBatch[vrb.numCols];
+          ArrayList<Writable> writablesList = new ArrayList<>(5);// = new ArrayWritable[((VectorizedRowBatch) obj).numCols];
+          int num=0;
+          for(ColumnVector cv : ((VectorizedRowBatch) obj).cols){
+            writablesList.add(cv.getWritableObject(0));
+            num++;
+          }
+          Writable[] writables = (Writable[]) writablesList.toArray();
+//          writables[0] = vrb;
           if (null == assigners) {
             // Normally we'd build the assigners from the rowBatchContext.rowOI, but with Parquet
             // we have a discrepancy between the metadata type (Eg. tinyint -> BYTE) and

@@ -138,13 +138,15 @@ public class VectorizedCarbonInputFormat extends CarbonInputFormat<VectorizedRow
 
     if (!projection.equals("")) {
       String[] columnNames = projection.split(",");
+
+      projectionColumns = new StringBuilder(columnNames[0]);
       //verify that the columns parsed by Hive exist in the table
-      for (String col : columnNames) {
+      /*for (String col : columnNames) {
         //show columns command will return these data
         if (carbonColumnNames.contains(col)) {
           projectionColumns.append(col + ",");
         }
-      }
+      }*/
       return projectionColumns.substring(0, projectionColumns.lastIndexOf(","));
     } else {
       return allColumns.substring(0, allColumns.lastIndexOf(","));
