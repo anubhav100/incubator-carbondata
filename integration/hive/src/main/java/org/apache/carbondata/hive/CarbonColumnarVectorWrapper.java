@@ -106,7 +106,7 @@ private void initilizedVector(){
     if (!filteredRows[rowId]) {
       if(this.columnVector instanceof LongColumnVector) {
         longColumnVector.noNulls = true;
-        longColumnVector.isRepeating = true;
+        longColumnVector.isRepeating = false;
         longColumnVector.vector[rowId] = (long) value;
       }
       else if(this.columnVector instanceof BytesColumnVector)

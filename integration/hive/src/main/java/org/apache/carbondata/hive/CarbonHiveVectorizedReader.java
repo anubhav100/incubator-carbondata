@@ -184,12 +184,15 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
         while (outputBatch.size < maxSize) {
           System.out.println("-------------------------------" + valueObj.get());
           ArrayList<Writable> writablesList = new ArrayList<>(5);
-          int num = 0;
           for(ColumnVector cv : ((VectorizedRowBatch) obj).cols){
-            if(cv.getWritableObject(0) != null)
-            writablesList.add(cv.getWritableObject(0));
-              System.out.println("Running for column : " + num);
-              num++;
+            int entryCount = 0;
+            while(cv.getWritableObject(entryCount) != null) {
+//              Writable writable = cv.getWritableObject(entryCount);
+//              if(writable instanceof LongWritable)
+              writablesList.add(cv.getWritableObject(entryCount));
+              System.out.println("Running for column entry : " + entryCount);
+              entryCount++;
+            }
           }
           Writable[] writables = (Writable[]) writablesList.toArray();
           if (null == assigners) {
