@@ -167,7 +167,7 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
   }
 
   @Override public boolean next(NullWritable key, VectorizedRowBatch outputBatch)
-      throws IOException {
+          throws IOException {
     try {
       if (assigners != null) {
         assert (outputBatch.numCols == assigners.length);
@@ -179,32 +179,31 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
         Object obj = getCurrentValue();
         VectorizedRowBatch vrb = (VectorizedRowBatch) obj;
 
-        // valueObj.set(vrb);
         System.out.print(obj);
         while (outputBatch.size < maxSize) {
           System.out.println("-------------------------------" + valueObj.get());
           ArrayList<Writable> writablesList = new ArrayList<>(5);
-          for(ColumnVector cv : ((VectorizedRowBatch) obj).cols){
+
+          for(int i=0; i<((VectorizedRowBatch) obj).cols.length -3; i++) {
+            ColumnVector cv = ((VectorizedRowBatch) obj).cols[i];
             int entryCount = 0;
-            while(cv.getWritableObject(entryCount) != null) {
-//              Writable writable = cv.getWritableObject(entryCount);
-//              if(writable instanceof LongWritable)
+            while(this.carbonColumnarBatch.getRowCounter() > entryCount) {
               writablesList.add(cv.getWritableObject(entryCount));
               System.out.println("Running for column entry : " + entryCount);
               entryCount++;
             }
           }
-          Writable[] writables = (Writable[]) writablesList.toArray();
+          Writable[] writables = writablesList.toArray(new Writable[writablesList.size()]);
+
           if (null == assigners) {
-            // Normally we'd build the assigners from the rowBatchContext.rowOI, but with Parquet
-            // we have a discrepancy between the metadata type (Eg. tinyint -> BYTE) and
-            // the writable value (IntWritable). see Parquet's ETypeConverter class.
+// Normally we'd build the assigners from the rowBatchContext.rowOI, but with Parquet
+// we have a discrepancy between the metadata type (Eg. tinyint -> BYTE) and
+// the writable value (IntWritable). see Parquet's ETypeConverter class.
             assigners = VectorColumnAssignFactory.buildAssigners(outputBatch, writables);
           }
 
           for (int i = 0; i < writables.length; ++i) {
             assigners[i].assignObjectValue(writables[i], outputBatch.size);
-
           }
           ++outputBatch.size;
         }
