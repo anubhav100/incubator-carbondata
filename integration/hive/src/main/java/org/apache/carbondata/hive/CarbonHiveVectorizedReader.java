@@ -177,45 +177,41 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
 
       if (nextKeyValue()) {
         Object obj = getCurrentValue();
-        VectorizedRowBatch vrb = (VectorizedRowBatch) obj;
-
+        outputBatch = (VectorizedRowBatch) obj;
+        Writable[] writables= new Writable[outputBatch.numCols-3];
         System.out.print(obj);
         while (outputBatch.size < maxSize) {
           System.out.println("-------------------------------" + valueObj.get());
-          ArrayList<Writable> writablesList = new ArrayList<>(5);
-
-          for(int i=0; i<((VectorizedRowBatch) obj).cols.length -3; i++) {
-            ColumnVector cv = ((VectorizedRowBatch) obj).cols[i];
+//          ArrayList<Writable> writablesList = new ArrayList<>(5);
+          for(int i=0; i<outputBatch.cols.length - 3; i++) {
+            ColumnVector cv = outputBatch.cols[i];
             int entryCount = 0;
-            while(this.carbonColumnarBatch.getRowCounter() > entryCount) {
-              writablesList.add(cv.getWritableObject(entryCount));
-              System.out.println("Running for column entry : " + entryCount);
-              entryCount++;
-            }
-          }
-          Writable[] writables = writablesList.toArray(new Writable[writablesList.size()]);
-
-          if (null == assigners) {
+//            while(this.carbonColumnarBatch.getRowCounter() > entryCount) {
+//              System.out.println("Value: " + cv.getWritableObject(entryCount));
+            writables[i] = cv.getWritableObject(outputBatch.size);
+            System.out.println("Running for column entry : " + entryCount);
+            entryCount++;
+//          }
+        }
+//          Writable[] writables = writablesList.toArray(new Writable[writablesList.size()]);
+        if (null == assigners) {
 // Normally we'd build the assigners from the rowBatchContext.rowOI, but with Parquet
 // we have a discrepancy between the metadata type (Eg. tinyint -> BYTE) and
 // the writable value (IntWritable). see Parquet's ETypeConverter class.
-            assigners = VectorColumnAssignFactory.buildAssigners(outputBatch, writables);
-          }
-
-          for (int i = 0; i < writables.length; ++i) {
-            assigners[i].assignObjectValue(writables[i], outputBatch.size);
-          }
-          ++outputBatch.size;
+          assigners = VectorColumnAssignFactory.buildAssigners(outputBatch, writables);
         }
-        return outputBatch.size > 0;
+        for (int i = 0; i < writables.length; ++i) {
+          assigners[i].assignObjectValue(writables[i], outputBatch.size);
+        }
+        ++outputBatch.size;
       }
-    } catch (HiveException | InterruptedException e) {
-      throw new RuntimeException(e);
+      return outputBatch.size > 0;
     }
-
-    return outputBatch.size > 0;
-
+  } catch (HiveException | InterruptedException e) {
+    throw new RuntimeException(e);
   }
+    return outputBatch.size > 0;
+}
 
   private void fillWritables(VectorizedRowBatch vrb, Writable[] writables) {
     for (ColumnVector cv: vrb.cols) {
