@@ -12,23 +12,23 @@
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
- * limitations under the License.
  */
+
 package org.apache.carbondata.presto
 
-import org.apache.carbondata.core.cache.{Cache, CacheProvider, CacheType}
 import org.apache.carbondata.core.cache.dictionary.{Dictionary, DictionaryColumnUniqueIdentifier}
+import org.apache.carbondata.core.cache.{Cache, CacheProvider, CacheType}
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier
 import org.apache.carbondata.core.metadata.datatype.DataType
 import org.apache.carbondata.core.metadata.encoder.Encoding
 import org.apache.carbondata.core.metadata.schema.table.column.CarbonColumn
-import org.apache.carbondata.core.util.{CarbonUtil, DataTypeUtil}
+import org.apache.carbondata.core.util.CarbonUtil
 import org.apache.carbondata.hadoop.readsupport.CarbonReadSupport
 
 /**
  * This is the class to decode dictionary encoded column data back to its original value.
  */
-class CarbonDictionaryDecodeReadSupport[T] extends CarbonReadSupport[T] {
+class PrestoDictionaryDecodeReadSupport[T] extends CarbonReadSupport[T] {
   private var dictionaries: Array[Dictionary] = _
   private var dataTypes: Array[DataType] = _
 
@@ -73,11 +73,7 @@ class CarbonDictionaryDecodeReadSupport[T] extends CarbonReadSupport[T] {
 
   def convertColumn(data: Array[AnyRef], columnNo: Int): T = {
     val convertedData = if (Option(dictionaries(columnNo)).isDefined) {
-      data.map { value =>
-        DataTypeUtil
-          .getDataBasedOnDataType(dictionaries(columnNo)
-            .getDictionaryValueForKey(value.asInstanceOf[Int]), DataType.STRING)
-      }
+      data.map { value => dictionaries(columnNo).getDictionaryValueForKey(value.asInstanceOf[Int]) }
     } else {
       data
     }
