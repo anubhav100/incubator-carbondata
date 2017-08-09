@@ -40,11 +40,7 @@ public class ResultCollectorFactory {
    */
   public static AbstractScannedResultCollector getScannedResultCollector(
       BlockExecutionInfo blockExecutionInfo) {
-    AbstractScannedResultCollector scannerResultAggregator = null;
-    if (blockExecutionInfo.isColumnCollector()) {
       LOGGER.info("Column based dictionary collector is used to scan and collect the data");
-      scannerResultAggregator = new ColumnBasedResultCollector(blockExecutionInfo);
-    }
-    return scannerResultAggregator;
+      return new ColumnBasedResultCollector(blockExecutionInfo);
   }
 }

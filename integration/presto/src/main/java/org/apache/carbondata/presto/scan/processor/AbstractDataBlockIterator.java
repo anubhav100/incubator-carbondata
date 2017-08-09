@@ -29,7 +29,6 @@ import org.apache.carbondata.common.logging.LogService;
 import org.apache.carbondata.common.logging.LogServiceFactory;
 import org.apache.carbondata.core.datastore.DataRefNode;
 import org.apache.carbondata.core.datastore.FileHolder;
-import org.apache.carbondata.core.scan.collector.ResultCollectorFactory;
 import org.apache.carbondata.core.scan.collector.ScannedResultCollector;
 import org.apache.carbondata.core.scan.executor.infos.BlockExecutionInfo;
 import org.apache.carbondata.core.scan.processor.BlockletIterator;
@@ -40,6 +39,7 @@ import org.apache.carbondata.core.scan.scanner.BlockletScanner;
 import org.apache.carbondata.core.scan.scanner.impl.FilterScanner;
 import org.apache.carbondata.core.scan.scanner.impl.NonFilterScanner;
 import org.apache.carbondata.core.stats.QueryStatisticsModel;
+import org.apache.carbondata.presto.scan.collector.ResultCollectorFactory;
 
 /**
  * This abstract class provides a skeletal implementation of the
@@ -58,7 +58,7 @@ public abstract class AbstractDataBlockIterator extends CarbonIterator<List<Obje
   /**
    * result collector which will be used to aggregate the scanned result
    */
-  private ScannedResultCollector scannerResultAggregator;
+  protected ScannedResultCollector scannerResultAggregator;
 
   /**
    * processor which will be used to process the block processing can be
@@ -69,7 +69,7 @@ public abstract class AbstractDataBlockIterator extends CarbonIterator<List<Obje
   /**
    * batch size of result
    */
-  private int batchSize;
+  protected int batchSize;
 
   private ExecutorService executorService;
 
@@ -77,7 +77,7 @@ public abstract class AbstractDataBlockIterator extends CarbonIterator<List<Obje
 
   private Future<BlocksChunkHolder> futureIo;
 
-  private AbstractScannedResult scannedResult;
+  protected AbstractScannedResult scannedResult;
 
   private BlockExecutionInfo blockExecutionInfo;
 
@@ -177,38 +177,34 @@ public abstract class AbstractDataBlockIterator extends CarbonIterator<List<Obje
   }
 
   private Future<AbstractScannedResult> execute() {
-    return executorService.submit(new Callable<AbstractScannedResult>() {
-      @Override public AbstractScannedResult call() throws Exception {
-        if (futureIo == null) {
+    return executorService.submit(() -> {
+      if (futureIo == null) {
+        futureIo = executeRead();
+      }
+      BlocksChunkHolder blocksChunkHolder = futureIo.get();
+      futureIo = null;
+      nextRead.set(false);
+      if (blocksChunkHolder != null) {
+        if (dataBlockIterator.hasNext()) {
+          nextRead.set(true);
           futureIo = executeRead();
         }
-        BlocksChunkHolder blocksChunkHolder = futureIo.get();
-        futureIo = null;
-        nextRead.set(false);
-        if (blocksChunkHolder != null) {
-          if (dataBlockIterator.hasNext()) {
-            nextRead.set(true);
-            futureIo = executeRead();
-          }
-          return blockletScanner.scanBlocklet(blocksChunkHolder);
-        }
-        return null;
+        return blockletScanner.scanBlocklet(blocksChunkHolder);
       }
+      return null;
     });
   }
 
   private Future<BlocksChunkHolder> executeRead() {
-    return executorService.submit(new Callable<BlocksChunkHolder>() {
-      @Override public BlocksChunkHolder call() throws Exception {
-        if (dataBlockIterator.hasNext()) {
-          BlocksChunkHolder blocksChunkHolder = getBlocksChunkHolder();
-          if (blocksChunkHolder != null) {
-            blockletScanner.readBlocklet(blocksChunkHolder);
-            return blocksChunkHolder;
-          }
+    return executorService.submit(() -> {
+      if (dataBlockIterator.hasNext()) {
+        BlocksChunkHolder blocksChunkHolder = getBlocksChunkHolder();
+        if (blocksChunkHolder != null) {
+          blockletScanner.readBlocklet(blocksChunkHolder);
+          return blocksChunkHolder;
         }
-        return null;
       }
+      return null;
     });
   }
 

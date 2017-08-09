@@ -34,4 +34,5 @@ public class ColumnDetailQueryExecutor extends AbstractQueryExecutor {
         queryProperties.executorService);
     return this.queryIterator;
   }
+
 }

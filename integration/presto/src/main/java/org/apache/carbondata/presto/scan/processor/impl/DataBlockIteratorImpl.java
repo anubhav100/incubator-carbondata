@@ -22,9 +22,9 @@ import java.util.concurrent.ExecutorService;
 
 import org.apache.carbondata.core.datastore.FileHolder;
 import org.apache.carbondata.core.scan.executor.infos.BlockExecutionInfo;
-import org.apache.carbondata.core.scan.processor.AbstractDataBlockIterator;
 import org.apache.carbondata.core.scan.result.vector.CarbonColumnarBatch;
 import org.apache.carbondata.core.stats.QueryStatisticsModel;
+import org.apache.carbondata.presto.scan.processor.AbstractDataBlockIterator;
 
 import static org.apache.carbondata.presto.constants.CarbonCommonConstants.COLUMNAR_DATA_READ_BATCH_SIZE;
 
@@ -48,7 +48,7 @@ public class DataBlockIteratorImpl extends AbstractDataBlockIterator {
    * @return Result of @batchSize
    */
   public List<Object[]> next() {
-    List<Object[]> collectedResult = null;
+    List<Object[]> collectedResult;
     batchSize = Integer.parseInt(COLUMNAR_DATA_READ_BATCH_SIZE);
     if (updateScanner()) {
       collectedResult = this.scannerResultAggregator.collectData(scannedResult, batchSize);

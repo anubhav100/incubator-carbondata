@@ -17,8 +17,6 @@
 package org.apache.carbondata.presto.scan.executor;
 
 import org.apache.carbondata.core.scan.executor.QueryExecutor;
-import org.apache.carbondata.core.scan.executor.impl.DetailQueryExecutor;
-import org.apache.carbondata.core.scan.executor.impl.VectorDetailQueryExecutor;
 import org.apache.carbondata.core.scan.model.QueryModel;
 import org.apache.carbondata.presto.scan.executor.impl.ColumnDetailQueryExecutor;
 
@@ -28,14 +26,8 @@ import org.apache.carbondata.presto.scan.executor.impl.ColumnDetailQueryExecutor
  */
 public class QueryExecutorFactory {
 
-  public static QueryExecutor getQueryExecutor(QueryModel queryModel) {
-    if (queryModel.isVectorReader()) {
-      return new VectorDetailQueryExecutor();
-    }
-    if (queryModel.isColumnCollector()) {
-      return new ColumnDetailQueryExecutor();
-    } else {
-      return new DetailQueryExecutor();
-    }
+  public static QueryExecutor getQueryExecutor() {
+    return new ColumnDetailQueryExecutor();
+
   }
 }

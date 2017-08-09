@@ -44,7 +44,7 @@ import org.apache.commons.lang3.ArrayUtils;
 /**
  * It is not a collector it is just a scanned result holder.
  */
-public class ColumnBasedResultCollector extends AbstractScannedResultCollector {
+class ColumnBasedResultCollector extends AbstractScannedResultCollector {
 
   private QueryDimension[] queryDimensions;
 
@@ -70,7 +70,7 @@ public class ColumnBasedResultCollector extends AbstractScannedResultCollector {
 
   private boolean isDimensionExists;
 
-  private Map<Integer, GenericQueryType> comlexDimensionInfoMap;
+  private Map<Integer, GenericQueryType> complexDimensionInfoMap;
 
   ColumnBasedResultCollector(BlockExecutionInfo blockExecutionInfos) {
     super(blockExecutionInfos);
@@ -78,7 +78,7 @@ public class ColumnBasedResultCollector extends AbstractScannedResultCollector {
     queryMeasures = tableBlockExecutionInfos.getQueryMeasures();
     initDimensionAndMeasureIndexesForFillingData();
     isDimensionExists = queryDimensions.length > 0;
-    this.comlexDimensionInfoMap = tableBlockExecutionInfos.getComlexDimensionInfoMap();
+    this.complexDimensionInfoMap = tableBlockExecutionInfos.getComlexDimensionInfoMap();
   }
 
   /**
@@ -114,7 +114,7 @@ public class ColumnBasedResultCollector extends AbstractScannedResultCollector {
         complexTypeColumnIndex = 0;
         for (int i = 0; i < queryDimensions.length; i++) {
           fillDimensionData(scannedResult, surrogateResult, noDictionaryKeys, complexTypeKeyArray,
-              comlexDimensionInfoMap, row, i);
+              complexDimensionInfoMap, row, i);
         }
       } else {
         scannedResult.incrementCounter();

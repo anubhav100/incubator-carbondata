@@ -51,7 +51,7 @@ public abstract class AbstractDataBlockIterator extends CarbonIterator<List<Obje
   /**
    * iterator which will be used to iterate over data blocks
    */
-  private CarbonIterator<DataRefNode> dataBlockIterator;
+  protected CarbonIterator<DataRefNode> dataBlockIterator;
 
   /**
    * result collector which will be used to aggregate the scanned result
@@ -62,7 +62,7 @@ public abstract class AbstractDataBlockIterator extends CarbonIterator<List<Obje
    * processor which will be used to process the block processing can be
    * filter processing or non filter processing
    */
-  private BlockletScanner blockletScanner;
+  protected BlockletScanner blockletScanner;
 
   /**
    * batch size of result
@@ -211,8 +211,6 @@ public abstract class AbstractDataBlockIterator extends CarbonIterator<List<Obje
   }
 
   public abstract void processNextBatch(CarbonColumnarBatch columnarBatch);
-
-  public abstract List<Object[]>  processNextColumnBatch();
 
   /**
    * Close the resources

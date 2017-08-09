@@ -51,7 +51,7 @@ import org.apache.carbondata.presto.scan.processor.impl.DataBlockIteratorImpl;
  * executing that query are returning a iterator over block and every time next
  * call will come it will execute the block and return the result
  */
-public abstract class AbstractDetailQueryResultIterator<E> extends CarbonIterator<E> {
+abstract class AbstractDetailQueryResultIterator<E> extends CarbonIterator<E> {
 
   /**
    * LOGGER.
@@ -61,24 +61,20 @@ public abstract class AbstractDetailQueryResultIterator<E> extends CarbonIterato
 
   private static final Map<DeleteDeltaInfo, Object> deleteDeltaToLockObjectMap =
       new ConcurrentHashMap<>();
-
-  protected ExecutorService execService;
+  DataBlockIteratorImpl dataBlockIterator;
+  private ExecutorService execService;
   /**
    * execution info of the block
    */
-  protected List<BlockExecutionInfo> blockExecutionInfos;
-
+  private List<BlockExecutionInfo> blockExecutionInfos;
   /**
    * file reader which will be used to execute the query
    */
-  protected FileHolder fileReader;
-
-  protected DataBlockIteratorImpl dataBlockIterator;
-
+  private FileHolder fileReader;
   /**
    * QueryStatisticsRecorder
    */
-  protected QueryStatisticsRecorder recorder;
+  private QueryStatisticsRecorder recorder;
   /**
    * number of cores which can be used
    */
@@ -88,7 +84,7 @@ public abstract class AbstractDetailQueryResultIterator<E> extends CarbonIterato
    */
   private QueryStatisticsModel queryStatisticsModel;
 
-  public AbstractDetailQueryResultIterator(List<BlockExecutionInfo> infos, QueryModel queryModel,
+  AbstractDetailQueryResultIterator(List<BlockExecutionInfo> infos, QueryModel queryModel,
       ExecutorService execService) {
     String batchSizeString =
         CarbonProperties.getInstance().getProperty(CarbonCommonConstants.DETAIL_QUERY_BATCH_SIZE);
@@ -108,11 +104,11 @@ public abstract class AbstractDetailQueryResultIterator<E> extends CarbonIterato
         FileFactory.getFileType(queryModel.getAbsoluteTableIdentifier().getStorePath()));
     this.fileReader.setQueryId(queryModel.getQueryId());
     this.execService = execService;
-    intialiseInfos();
+    intializeInfos();
     initQueryStatiticsModel();
   }
 
-  private void intialiseInfos() {
+  private void intializeInfos() {
     for (BlockExecutionInfo blockInfo : blockExecutionInfos) {
       Map<String, DeleteDeltaVo> deletedRowsMap = null;
       DataRefNodeFinder finder = new BTreeDataRefNodeFinder(blockInfo.getEachColumnValueSize(),
@@ -192,7 +188,7 @@ public abstract class AbstractDetailQueryResultIterator<E> extends CarbonIterato
           carbonDeleteDeltaFileReader = new CarbonDeleteFilesDataReader();
           Map<String, DeleteDeltaVo> deletedRowsMap = carbonDeleteDeltaFileReader
               .getDeletedRowsDataVo(deleteDeltaInfo.getDeleteDeltaFile());
-          setDeltedDeltaBoToDataBlock(deleteDeltaInfo, deletedRowsMap, dataBlock);
+          setDeletedRecordsMapToDataBlock(deleteDeltaInfo, deletedRowsMap, dataBlock);
           // remove the lock
           deleteDeltaToLockObjectMap.remove(deleteDeltaInfo);
           return deletedRowsMap;
@@ -213,7 +209,7 @@ public abstract class AbstractDetailQueryResultIterator<E> extends CarbonIterato
    * @param deletedRecordsMap
    * @param dataBlock
    */
-  private void setDeltedDeltaBoToDataBlock(DeleteDeltaInfo deleteDeltaInfo,
+  private void setDeletedRecordsMapToDataBlock(DeleteDeltaInfo deleteDeltaInfo,
       Map<String, DeleteDeltaVo> deletedRecordsMap, AbstractIndex dataBlock) {
     // check if timestamp of data block is less than the latest delete delta timestamp
     // then update the delete delta details and timestamp in data block
@@ -229,16 +225,11 @@ public abstract class AbstractDetailQueryResultIterator<E> extends CarbonIterato
   }
 
   @Override public boolean hasNext() {
-    if ((dataBlockIterator != null && dataBlockIterator.hasNext())) {
-      return true;
-    } else if (blockExecutionInfos.size() > 0) {
-      return true;
-    } else {
-      return false;
-    }
+    return (dataBlockIterator != null && dataBlockIterator.hasNext())
+        || blockExecutionInfos.size() > 0;
   }
 
-  protected void updateDataBlockIterator() {
+  void updateDataBlockIterator() {
     if (dataBlockIterator == null || !dataBlockIterator.hasNext()) {
       dataBlockIterator = getDataBlockIterator();
       while (dataBlockIterator != null && !dataBlockIterator.hasNext()) {
@@ -257,7 +248,7 @@ public abstract class AbstractDetailQueryResultIterator<E> extends CarbonIterato
     return null;
   }
 
-  protected void initQueryStatiticsModel() {
+  private void initQueryStatiticsModel() {
     this.queryStatisticsModel = new QueryStatisticsModel();
     this.queryStatisticsModel.setRecorder(recorder);
     QueryStatistic queryStatisticTotalBlocklet = new QueryStatistic();

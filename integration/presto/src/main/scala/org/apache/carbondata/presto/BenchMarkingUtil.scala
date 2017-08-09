@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -23,7 +24,7 @@ object BenchMarkingUtil {
 
   val queries: Array[Query] = Array(
 
-    //Query("select * from LINEITEM limit 10","","")
+    Query("select o_orderdate from ORDERS ","","")
 /*
     Query("select\n        l_returnflag,\n        l_linestatus,\n        sum(l_quantity) as " +
            "sum_qty,\n        sum(l_extendedprice) as sum_base_price,\n        sum(l_extendedprice" +
@@ -152,7 +153,7 @@ object BenchMarkingUtil {
            "lineitem,\n        part\nwhere\n        l_partkey = p_partkey\n        and l_shipdate " +
            ">= cast('1995-08-01' as timestamp) \n        and l_shipdate < cast('1995-09-01' as timestamp)","",""),*/
 
-     Query("select\n        p_brand,\n        p_type,\n        p_size,\n        count(distinct " +
+     /*Query("select\n        p_brand,\n        p_type,\n        p_size,\n        count(distinct " +
            "ps_suppkey) as supplier_cnt\nfrom\n        partsupp,\n        part\nwhere\n        " +
            "p_partkey = ps_partkey\n        and p_brand <> 'Brand#34'\n        and p_type not like" +
            " 'ECONOMY BRUSHED%'\n        and p_size in (22, 14, 27, 49, 21, 33, 35, 28)\n        " +
@@ -182,7 +183,7 @@ object BenchMarkingUtil {
            "ps_suppkey\nfrom\n    tmp4, tmp3\nwhere\n    ps_partkey = l_partkey\n    and " +
            "ps_suppkey = l_suppkey\n    and ps_availqty > sum_quantity\n)\nselect\n    s_name,\n  " +
            "  s_address\nfrom\n    supplier\nwhere\n    s_suppkey IN (select ps_suppkey from tmp5)" +
-           "\norder by s_name","","")
+           "\norder by s_name","","")*/
   )
 
 

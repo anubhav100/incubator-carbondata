@@ -88,10 +88,9 @@ class CarbondataRecordSet implements RecordSet {
         //blockletInfos,
         ColumnarFormatVersion.valueOf(split.getLocalInputSplit().getVersion()), null));
 
-    queryModel.setColumnCollector(true);
     queryModel.setTableBlockInfos(tableBlockInfoList);
 
-    queryExecutor = QueryExecutorFactory.getQueryExecutor(queryModel);
+    queryExecutor = QueryExecutorFactory.getQueryExecutor();
 
     CarbonProperties.getInstance().addProperty("carbon.detail.batch.size", "4096");
 

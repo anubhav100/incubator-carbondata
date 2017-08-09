@@ -17,8 +17,8 @@
 
 package org.apache.carbondata.presto;
 
-import java.util.List;
 import javax.inject.Inject;
+import java.util.List;
 
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
 import org.apache.carbondata.core.scan.expression.Expression;
