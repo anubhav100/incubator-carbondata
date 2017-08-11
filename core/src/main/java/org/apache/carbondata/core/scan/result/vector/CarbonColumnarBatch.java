@@ -58,7 +58,8 @@ public class CarbonColumnarBatch {
     rowsFiltered = 0;
     Arrays.fill(filteredRows, false);
     for (int i = 0; i < columnVectors.length; i++) {
-      columnVectors[i].reset();
+      if (columnVectors[i] != null)
+        columnVectors[i].reset();
     }
   }
 

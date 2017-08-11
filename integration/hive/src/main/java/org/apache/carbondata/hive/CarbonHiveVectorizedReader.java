@@ -182,12 +182,12 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
       if (nextKeyValue()) {
         Object obj = getCurrentValue();
         outputBatch = (VectorizedRowBatch) obj;
-        Writable[] writables = new Writable[outputBatch.numCols - 3];
+        Writable[] writables = new Writable[outputBatch.numCols];
         System.out.print(obj);
         while (outputBatch.size < 2) {
           System.out.println("-------------------------------" + valueObj.get());
 //          ArrayList<Writable> writablesList = new ArrayList<>(5);
-          for (int i = 0; i < outputBatch.cols.length - 3; i++) {
+          for (int i = 0; i < outputBatch.numCols; i++) {
             ColumnVector cv = outputBatch.cols[i];
             int entryCount = 0;
 //            while(this.carbonColumnarBatch.getRowCounter() > entryCount) {
@@ -350,8 +350,8 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
     boolean[] filteredRows = new boolean[columnarBatch.getMaxSize()];
     int vectorCount=0;
     int extraColumns=3;
-    for (int i = 0; i < columnarBatch.cols.length-extraColumns; i++) {
-      if((colsToInclude == null) || (colsToInclude.contains(i))) {
+    for (int i = 0; i < columnarBatch.numCols; i++) {
+      if((colsToInclude.size()==0) || (colsToInclude.contains(i))) {
         vectors[vectorCount++] = new CarbonColumnarVectorWrapper(columnarBatch.cols[i], filteredRows);
       }
     }
