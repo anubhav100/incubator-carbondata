@@ -48,6 +48,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.ql.exec.vector.*;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.serde.serdeConstants;
+import org.apache.hadoop.hive.serde2.ColumnProjectionUtils;
 import org.apache.hadoop.hive.serde2.typeinfo.StructTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
@@ -92,6 +93,7 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
   private AbstractDetailQueryResultIterator iterator;
 
   private QueryExecutor queryExecutor;
+  private List<Integer> colsToInclude;
 
   CarbonHiveVectorizedReader(QueryModel queryModel, InputSplit inputSplit, JobConf jobConf)
       throws IOException, InterruptedException, UnsupportedOperationException {
@@ -102,6 +104,7 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
       enableReturningBatches();
       rowBatchContext = new VectorizedRowBatchCtx();
       rowBatchContext.init(jobConf, (FileSplit) inputSplit);
+      colsToInclude = ColumnProjectionUtils.getReadColumnIDs(jobConf);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -259,7 +262,7 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
   }
 
   private boolean nextKeyValue() throws IOException, InterruptedException, HiveException {
-    resultBatch();
+    resultBatch();                  //----s----Collect result of this in some batch
 
     if (returnColumnarBatch) return nextBatch();
 
@@ -342,10 +345,15 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
     } catch (HiveException e) {
       e.printStackTrace();
     }
+
     CarbonColumnVector[] vectors = new CarbonColumnVector[fields.length];
     boolean[] filteredRows = new boolean[columnarBatch.getMaxSize()];
-    for (int i = 0; i < fields.length; i++) {
-      vectors[i] = new CarbonColumnarVectorWrapper(columnarBatch.cols[i], filteredRows);
+    int vectorCount=0;
+    int extraColumns=3;
+    for (int i = 0; i < columnarBatch.cols.length-extraColumns; i++) {
+      if((colsToInclude == null) || (colsToInclude.contains(i))) {
+        vectors[vectorCount++] = new CarbonColumnarVectorWrapper(columnarBatch.cols[i], filteredRows);
+      }
     }
     carbonColumnarBatch =
         new CarbonColumnarBatch(vectors, columnarBatch.getMaxSize(), filteredRows);
@@ -407,7 +415,8 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
     final List<? extends org.apache.hadoop.hive.serde2.objectinspector.StructField> fieldRefs =
         carbonObjectInspector.getAllStructFieldRefs();
     VectorizedRowBatch result = new VectorizedRowBatch(fieldRefs.size());
-    for (int j = 0; j < fieldRefs.size(); j++) {
+    int extraColumnCount = 3;
+    for (int j = 0; j < fieldRefs.size()-extraColumnCount; j++) {
       switch (fieldRefs.get(j).getFieldObjectInspector().getTypeName()) {
         case "int":
         case "long":
@@ -427,7 +436,7 @@ public class CarbonHiveVectorizedReader implements RecordReader<NullWritable, Ve
       }
 
     }
-    result.numCols = fieldRefs.size();
+    result.numCols = fieldRefs.size()-extraColumnCount;
     result.reset();
     return result;
   }
