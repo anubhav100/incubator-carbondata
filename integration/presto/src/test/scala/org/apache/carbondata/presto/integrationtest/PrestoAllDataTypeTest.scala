@@ -304,14 +304,15 @@ class PrestoAllDataTypeTest extends FunSuiteLike with BeforeAndAfterAll {
   test("test less than expression with and operator") {
     val actualResult: List[Map[String, Any]] = PrestoServer
       .executeQuery(
-        "SELECT ID,DATE,COUNTRY,NAME,PHONETYPE,SERIALNAME,SALARY,BONUS FROM TESTDB.TESTTABLE " +
-        "WHERE BONUS>1234 AND ID<2 GROUP BY ID,DATE,COUNTRY,NAME,PHONETYPE,SERIALNAME,SALARY," +
-        "BONUS ORDER BY ID")
+        "SELECT SALARY from TESTDB.TESTTABLE")
+
+    print("*****"+actualResult)
+
     val expectedResult: List[Map[String, Any]] = List(Map("ID" -> 1,
       "NAME" -> "anubhav",
       "BONUS" -> java.math.BigDecimal.valueOf(1234.4440).setScale(4),
       "DATE" -> "2015-07-23",
-      "SALARY" -> 5000000.0,
+      "SALARY" -> "5000000.0",
       "SERIALNAME" -> "ASD69643",
       "COUNTRY" -> "china",
       "PHONETYPE" -> "phone197"))
@@ -352,6 +353,20 @@ class PrestoAllDataTypeTest extends FunSuiteLike with BeforeAndAfterAll {
     val actualResult: List[Map[String, Any]] = PrestoServer
       .executeQuery("SELECT NAME FROM TESTDB.TESTTABLE WHERE DATE IS NOT NULL AND ID=9")
     val expectedResult: List[Map[String, Any]] = List(Map("NAME" -> "ravindra"))
+    assert(actualResult.equals(expectedResult))
+
+  }
+  test("test for not null operator on timestamp type") {
+    val actualResult: List[Map[String, Any]] = PrestoServer
+      .executeQuery("SELECT NAME FROM TESTDB.TESTTABLE WHERE DOB IS NOT NULL AND ID=9")
+    val expectedResult: List[Map[String, Any]] = List(Map("NAME" -> "ravindra"), Map("NAME" -> "jitesh"))
+    assert(actualResult.equals(expectedResult))
+
+  }
+  test("test for null operator on timestamp type") {
+    val actualResult: List[Map[String, Any]] = PrestoServer
+      .executeQuery("SELECT NAME FROM TESTDB.TESTTABLE WHERE DOB IS NULL AND ID=1")
+    val expectedResult: List[Map[String, Any]] = List(Map("NAME" -> "anubhav"))
     assert(actualResult.equals(expectedResult))
 
   }

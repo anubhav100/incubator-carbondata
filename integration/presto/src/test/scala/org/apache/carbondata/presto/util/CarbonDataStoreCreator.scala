@@ -128,14 +128,15 @@ object CarbonDataStoreCreator {
         DataLoadProcessorConstants.IS_EMPTY_DATA_BAD_RECORD +
         "," +
         "true")
+      loadModel.setMaxColumns("15")
       loadModel.setCsvHeader(
-        "ID,date,country,name,phonetype,serialname,salary,bonus")
+        "ID,date,country,name,phonetype,serialname,salary,bonus,dob,shortField")
       loadModel.setCsvHeaderColumns(loadModel.getCsvHeader.split(","))
       loadModel.setTaskNo("0")
       loadModel.setSegmentId("0")
       loadModel.setPartitionId("0")
       loadModel.setFactTimeStamp(System.currentTimeMillis())
-      loadModel.setMaxColumns("10")
+      loadModel.setMaxColumns("15")
       executeGraph(loadModel, absoluteTableIdentifier.getStorePath)
     } catch {
       case e: Exception => e.printStackTrace()
@@ -164,10 +165,12 @@ object CarbonDataStoreCreator {
     id.setDimensionColumn(true)
     id.setColumnGroup(1)
     columnSchemas.add(id)
+
     val dictEncoding: util.ArrayList[Encoding] = new util.ArrayList[Encoding]()
     dictEncoding.add(Encoding.DIRECT_DICTIONARY)
     dictEncoding.add(Encoding.DICTIONARY)
     dictEncoding.add(Encoding.INVERTED_INDEX)
+
     val date: ColumnSchema = new ColumnSchema()
     date.setColumnName("date")
     date.setColumnar(true)
@@ -178,6 +181,7 @@ object CarbonDataStoreCreator {
     date.setColumnGroup(2)
     date.setColumnReferenceId(date.getColumnUniqueId)
     columnSchemas.add(date)
+
     val country: ColumnSchema = new ColumnSchema()
     country.setColumnName("country")
     country.setColumnar(true)
@@ -189,6 +193,7 @@ object CarbonDataStoreCreator {
     country.setColumnGroup(3)
     country.setColumnReferenceId(country.getColumnUniqueId)
     columnSchemas.add(country)
+
     val name: ColumnSchema = new ColumnSchema()
     name.setColumnName("name")
     name.setColumnar(true)
@@ -199,6 +204,7 @@ object CarbonDataStoreCreator {
     name.setColumnGroup(4)
     name.setColumnReferenceId(name.getColumnUniqueId)
     columnSchemas.add(name)
+
     val phonetype: ColumnSchema = new ColumnSchema()
     phonetype.setColumnName("phonetype")
     phonetype.setColumnar(true)
@@ -209,6 +215,7 @@ object CarbonDataStoreCreator {
     phonetype.setColumnGroup(5)
     phonetype.setColumnReferenceId(phonetype.getColumnUniqueId)
     columnSchemas.add(phonetype)
+
     val serialname: ColumnSchema = new ColumnSchema()
     serialname.setColumnName("serialname")
     serialname.setColumnar(true)
@@ -219,16 +226,18 @@ object CarbonDataStoreCreator {
     serialname.setColumnGroup(6)
     serialname.setColumnReferenceId(serialname.getColumnUniqueId)
     columnSchemas.add(serialname)
+
     val salary: ColumnSchema = new ColumnSchema()
     salary.setColumnName("salary")
     salary.setColumnar(true)
     salary.setDataType(DataType.DOUBLE)
     salary.setEncodingList(encodings)
     salary.setColumnUniqueId(UUID.randomUUID().toString)
-    salary.setDimensionColumn(false)
+    salary.setDimensionColumn(true)
     salary.setColumnGroup(7)
     salary.setColumnReferenceId(salary.getColumnUniqueId)
     columnSchemas.add(salary)
+
     val bonus: ColumnSchema = new ColumnSchema()
     bonus.setColumnName("bonus")
     bonus.setColumnar(true)
@@ -241,6 +250,29 @@ object CarbonDataStoreCreator {
     bonus.setColumnGroup(8)
     bonus.setColumnReferenceId(bonus.getColumnUniqueId)
     columnSchemas.add(bonus)
+
+    val dob: ColumnSchema = new ColumnSchema()
+    dob.setColumnName("dob")
+    dob.setColumnar(true)
+    dob.setDataType(DataType.TIMESTAMP)
+    dob.setEncodingList(dictEncoding)
+    dob.setColumnUniqueId(UUID.randomUUID().toString)
+    dob.setDimensionColumn(true)
+    dob.setColumnGroup(9)
+    dob.setColumnReferenceId(dob.getColumnUniqueId)
+    columnSchemas.add(dob)
+
+    val shortField: ColumnSchema = new ColumnSchema()
+    shortField.setColumnName("shortField")
+    shortField.setColumnar(true)
+    shortField.setDataType(DataType.SHORT)
+    shortField.setEncodingList(encodings)
+    shortField.setColumnUniqueId(UUID.randomUUID().toString)
+    shortField.setDimensionColumn(false)
+    shortField.setColumnGroup(10)
+    shortField.setColumnReferenceId(shortField.getColumnUniqueId)
+    columnSchemas.add(shortField)
+
     tableSchema.setListOfColumns(columnSchemas)
     val schemaEvol: SchemaEvolution = new SchemaEvolution()
     schemaEvol.setSchemaEvolutionEntryList(
@@ -435,7 +467,7 @@ object CarbonDataStoreCreator {
     CSVInputFormat.setNumberOfColumns(
       configuration,
       String.valueOf(loadModel.getCsvHeaderColumns.length))
-    CSVInputFormat.setMaxColumns(configuration, "10")
+    CSVInputFormat.setMaxColumns(configuration, "15")
     val hadoopAttemptContext: TaskAttemptContextImpl =
       new TaskAttemptContextImpl(configuration,
         new TaskAttemptID("", 1, TaskType.MAP, 0, 0))
