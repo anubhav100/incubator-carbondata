@@ -265,6 +265,7 @@ class PrestoAllDataTypeTest extends FunSuiteLike with BeforeAndAfterAll {
         "SERIALNAME" -> "ASD90633",
         "COUNTRY" -> "china",
         "PHONETYPE" -> "phone2441"))
+    println("*****"+actualResult)
     assert(actualResult.toString() equals expectedResult.toString())
   }
   test("test and filter clause with less than equal to expression") {
@@ -304,15 +305,14 @@ class PrestoAllDataTypeTest extends FunSuiteLike with BeforeAndAfterAll {
   test("test less than expression with and operator") {
     val actualResult: List[Map[String, Any]] = PrestoServer
       .executeQuery(
-        "SELECT SALARY from TESTDB.TESTTABLE")
-
-    print("*****"+actualResult)
-
+        "SELECT ID,DATE,COUNTRY,NAME,PHONETYPE,SERIALNAME,SALARY,BONUS FROM TESTDB.TESTTABLE " +
+        "WHERE BONUS>1234 AND ID<2 GROUP BY ID,DATE,COUNTRY,NAME,PHONETYPE,SERIALNAME,SALARY," +
+        "BONUS ORDER BY ID")
     val expectedResult: List[Map[String, Any]] = List(Map("ID" -> 1,
       "NAME" -> "anubhav",
       "BONUS" -> java.math.BigDecimal.valueOf(1234.4440).setScale(4),
       "DATE" -> "2015-07-23",
-      "SALARY" -> "5000000.0",
+      "SALARY" -> 5000000.0,
       "SERIALNAME" -> "ASD69643",
       "COUNTRY" -> "china",
       "PHONETYPE" -> "phone197"))
@@ -369,5 +369,29 @@ class PrestoAllDataTypeTest extends FunSuiteLike with BeforeAndAfterAll {
     val expectedResult: List[Map[String, Any]] = List(Map("NAME" -> "anubhav"))
     assert(actualResult.equals(expectedResult))
 
+  }
+  test("test the result for short datatype with order by clause") {
+    val actualResult: List[Map[String, Any]] = PrestoServer
+      .executeQuery(
+        "SELECT DISTINCT SHORTFIELD from testdb.testtable ORDER BY SHORTFIELD ")
+    val expectedResult: List[Map[String, Any]] =List(Map("SHORTFIELD" -> 1), Map("SHORTFIELD" -> 4), Map("SHORTFIELD" -> 8), Map("SHORTFIELD" -> 10), Map("SHORTFIELD" -> 11), Map("SHORTFIELD" -> 12), Map("SHORTFIELD" -> 18), Map("SHORTFIELD" -> null))
+
+    assert(actualResult.equals(expectedResult))
+  }
+  test("test the result for short datatype in clause where field is null") {
+    val actualResult: List[Map[String, Any]] = PrestoServer
+      .executeQuery(
+        "SELECT ID from testdb.testtable WHERE SHORTFIELD IS NULL ORDER BY SHORTFIELD ")
+    val expectedResult: List[Map[String, Any]] =List(Map("ID" -> 7))
+
+    assert(actualResult.equals(expectedResult))
+  }
+  test("test the result for short datatype with greater than operator") {
+    val actualResult: List[Map[String, Any]] = PrestoServer
+      .executeQuery(
+        "SELECT ID from testdb.testtable WHERE SHORTFIELD>11 ")
+    val expectedResult: List[Map[String, Any]] =List(Map("ID" -> 6), Map("ID" -> 9))
+
+    assert(actualResult.equals(expectedResult))
   }
 }

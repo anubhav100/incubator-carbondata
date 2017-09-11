@@ -104,6 +104,9 @@ object CarbonDataStoreCreator {
       loadModel.setFactFilePath(factFilePath)
       loadModel.setLoadMetadataDetails(new ArrayList[LoadMetadataDetails]())
       loadModel.setStorePath(absoluteTableIdentifier.getStorePath)
+      CarbonProperties.getInstance
+        .addProperty(CarbonCommonConstants.ENABLE_UNSAFE_COLUMN_PAGE_LOADING, "true")
+
       loadModel.setDefaultTimestampFormat(
         CarbonProperties.getInstance.getProperty(
           CarbonCommonConstants.CARBON_TIMESTAMP_FORMAT,
@@ -233,7 +236,7 @@ object CarbonDataStoreCreator {
     salary.setDataType(DataType.DOUBLE)
     salary.setEncodingList(encodings)
     salary.setColumnUniqueId(UUID.randomUUID().toString)
-    salary.setDimensionColumn(true)
+    salary.setDimensionColumn(false)
     salary.setColumnGroup(7)
     salary.setColumnReferenceId(salary.getColumnUniqueId)
     columnSchemas.add(salary)
