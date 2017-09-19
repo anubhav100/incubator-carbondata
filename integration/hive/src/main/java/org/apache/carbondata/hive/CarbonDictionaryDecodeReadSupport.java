@@ -49,6 +49,8 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.spark.sql.catalyst.expressions.GenericInternalRow;
 import org.apache.spark.sql.catalyst.util.GenericArrayData;
+import org.apache.spark.sql.execution.vectorized.ColumnVector;
+import org.apache.spark.sql.execution.vectorized.ColumnarBatch;
 
 /**
  * This is the class to decode dictionary encoded column data back to its original value.
@@ -63,7 +65,7 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
    */
   protected CarbonColumn[] carbonColumns;
 
-  protected Writable[] writableArr;
+  protected Writable[] writableArr = new Writable[500];
 
   /**
    * This initialization is done inside executor task
@@ -92,24 +94,13 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
         dataTypes[i] = carbonColumns[i].getDataType();
       }
     }
+
   }
 
   @Override public T readRow(Object[] data) {
-    assert (data.length == dictionaries.length);
-    writableArr = new Writable[data.length];
-    for (int i = 0; i < dictionaries.length; i++) {
-      if (dictionaries[i] != null) {
-        data[i] = dictionaries[i].getDictionaryValueForKey((int) data[i]);
-      }
-      try {
-        writableArr[i] = createWritableObject(data[i], carbonColumns[i]);
-      } catch (IOException e) {
-        throw new RuntimeException(e.getMessage(), e);
-      }
-    }
-
-    return (T) writableArr;
+   return null;
   }
+
 
   /**
    * to book keep the dictionary cache or update access count for each
@@ -128,21 +119,28 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
   /**
    * To Create the Writable from the CarbonData data
    *
-   * @param obj
+   * @param
    * @param carbonColumn
    * @return
    * @throws IOException
    */
-  private Writable createWritableObject(Object obj, CarbonColumn carbonColumn) throws IOException {
+  private Writable createWritableObject(ColumnVector obj, CarbonColumn carbonColumn,int index) throws IOException {
     DataType dataType = carbonColumn.getDataType();
     switch (dataType) {
-      case STRUCT:
+      /*case STRUCT:
         return createStruct(obj, carbonColumn);
       case ARRAY:
-        return createArray(obj, carbonColumn);
+        return createArray(obj, carbonColumn);*/
       default:
-        return createWritablePrimitive(obj, carbonColumn);
+        return createWritablePrimitive(obj, carbonColumn,index);
     }
+  }
+
+  public T readBatches(ColumnarBatch columnarBatch) throws IOException {
+    for(int column =0;column<columnarBatch.numRows();column++){
+      writableArr[column] = createWritableObject(columnarBatch.column(column),carbonColumns[column],column);
+    }
+    return (T)writableArr;
   }
 
   /**
@@ -153,7 +151,7 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
    * @return
    * @throws IOException
    */
-  private ArrayWritable createArray(Object obj, CarbonColumn carbonColumn) throws IOException {
+  /*private ArrayWritable createArray(Object obj, CarbonColumn carbonColumn) throws IOException {
     if (obj instanceof GenericArrayData) {
       Object[] objArray = ((GenericArrayData) obj).array();
       List<CarbonDimension> childCarbonDimensions = null;
@@ -177,7 +175,7 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
       }
     }
     return null;
-  }
+  }*/
 
   /**
    * Create the Struct data for the Struct Datatype
@@ -187,7 +185,7 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
    * @return
    * @throws IOException
    */
-  private ArrayWritable createStruct(Object obj, CarbonColumn carbonColumn) throws IOException {
+  /*private ArrayWritable createStruct(Object obj, CarbonColumn carbonColumn) throws IOException {
     if (obj instanceof GenericInternalRow) {
       Object[] objArray = ((GenericInternalRow) obj).values();
       List<CarbonDimension> childCarbonDimensions = null;
@@ -203,7 +201,7 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
     }
     throw new IOException("DataType not supported in Carbondata");
   }
-
+*/
   /**
    * This method will create the Writable Objects for primitives.
    *
@@ -212,7 +210,7 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
    * @return
    * @throws IOException
    */
-  private Writable createWritablePrimitive(Object obj, CarbonColumn carbonColumn)
+  private Writable createWritablePrimitive(ColumnVector obj, CarbonColumn carbonColumn,int index)
       throws IOException {
     DataType dataType = carbonColumn.getDataType();
     if (obj == null) {
@@ -222,19 +220,19 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
       case NULL:
         return null;
       case DOUBLE:
-        return new DoubleWritable((double) obj);
+        return new DoubleWritable((double) obj.getDouble(index));
       case INT:
-        return new IntWritable((int) obj);
+        return new IntWritable((int) obj.getInt(index));
       case LONG:
-        return new LongWritable((long) obj);
+        return new LongWritable((long) obj.getLong(index));
       case SHORT:
-        return new ShortWritable((Short) obj);
+        return new ShortWritable((Short) obj.getShort(index));
       case DATE:
-        return new DateWritable(new Date(((Integer) obj).longValue()));
+        return new DateWritable(new Date(obj.getLong(index)));
       case TIMESTAMP:
-        return new TimestampWritable(new Timestamp((long) obj / 1000));
+        return new TimestampWritable(new Timestamp( obj.getLong(index) / 1000));
       case STRING:
-        return new Text(obj.toString());
+        return new Text(obj.getUTF8String(index).toString());
       case DECIMAL:
         return new HiveDecimalWritable(
             HiveDecimal.create(new java.math.BigDecimal(obj.toString())));

@@ -23,6 +23,7 @@ import java.util.List;
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier;
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
 import org.apache.carbondata.core.metadata.schema.table.column.CarbonColumn;
+import org.apache.carbondata.core.scan.executor.exception.QueryExecutionException;
 import org.apache.carbondata.core.scan.expression.Expression;
 import org.apache.carbondata.core.scan.filter.SingleTableProvider;
 import org.apache.carbondata.core.scan.filter.TableProvider;
@@ -104,20 +105,30 @@ public class MapredCarbonInputFormat extends CarbonInputFormat<ArrayWritable>
       splits[i] = new CarbonHiveInputSplit(split.getSegmentId(), split.getPath(), split.getStart(),
           split.getLength(), split.getLocations(), split.getNumberOfBlocklets(), split.getVersion(),
           split.getBlockStorageIdMap());
+
     }
+
     return splits;
   }
 
   @Override
   public RecordReader<Void, ArrayWritable> getRecordReader(InputSplit inputSplit, JobConf jobConf,
       Reporter reporter) throws IOException {
+    CarbonHiveRecordReader carbonHiveRecordReader = null;
     String path = null;
     if (inputSplit instanceof CarbonHiveInputSplit) {
       path = ((CarbonHiveInputSplit) inputSplit).getPath().toString();
     }
     QueryModel queryModel = getQueryModel(jobConf, path);
-    CarbonReadSupport<ArrayWritable> readSupport = new CarbonDictionaryDecodeReadSupport<>();
-    return new CarbonHiveRecordReader(queryModel, readSupport, inputSplit, jobConf);
+    CarbonDictionaryDecodeReadSupport<ArrayWritable> readSupport = new CarbonDictionaryDecodeReadSupport<>();
+    queryModel.setVectorReader(true);
+    try {
+      carbonHiveRecordReader =
+          new CarbonHiveRecordReader(queryModel, readSupport, inputSplit, jobConf);
+    } catch (QueryExecutionException e) {
+      e.printStackTrace();
+    }
+    return carbonHiveRecordReader;
   }
 
   private QueryModel getQueryModel(Configuration configuration, String path) throws IOException {
@@ -133,13 +144,14 @@ public class MapredCarbonInputFormat extends CarbonInputFormat<ArrayWritable>
     CarbonQueryPlan queryPlan = CarbonInputFormatUtil.createQueryPlan(carbonTable, projection);
     QueryModel queryModel =
         QueryModel.createModel(identifier, queryPlan, carbonTable, new DataTypeConverterImpl());
+
     // set the filter to the query model in order to filter blocklet before scan
     Expression filter = getFilterPredicates(configuration);
     CarbonInputFormatUtil.processFilterExpression(filter, carbonTable);
     FilterResolverIntf filterIntf =
         CarbonInputFormatUtil.resolveFilter(filter, identifier, tableProvider);
     queryModel.setFilterExpressionResolverTree(filterIntf);
-
+    queryModel.setTableBlockInfos(tableBlockInfoList);
     return queryModel;
   }
 

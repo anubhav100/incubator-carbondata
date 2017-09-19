@@ -116,6 +116,7 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
   private static final String TABLE_INFO = "mapreduce.input.carboninputformat.tableinfo";
   private static final String CARBON_READ_SUPPORT = "mapreduce.input.carboninputformat.readsupport";
   private static final String CARBON_CONVERTER = "mapreduce.input.carboninputformat.converter";
+  public static List<TableBlockInfo> tableBlockInfoList = new ArrayList<TableBlockInfo>();
 
   // a cache for carbon table, it will be used in task side
   private CarbonTable carbonTable;
@@ -572,7 +573,6 @@ public class CarbonInputFormat<T> extends FileInputFormat<Void, T> {
       SegmentUpdateStatusManager updateStatusManager,
       String segmentId, Set<SegmentTaskIndexStore.TaskBucketHolder> validTaskKeys)
     throws IOException {
-    List<TableBlockInfo> tableBlockInfoList = new ArrayList<TableBlockInfo>();
 
     // get file location of all files of given segment
     JobContext newJob =

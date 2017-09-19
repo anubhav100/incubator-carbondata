@@ -23,10 +23,13 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.carbondata.common.CarbonIterator;
 import org.apache.carbondata.core.datastore.block.TableBlockInfo;
 import org.apache.carbondata.core.scan.executor.exception.QueryExecutionException;
 import org.apache.carbondata.core.scan.model.QueryModel;
+import org.apache.carbondata.core.scan.result.iterator.AbstractDetailQueryResultIterator;
 import org.apache.carbondata.core.scan.result.iterator.ChunkRowIterator;
+import org.apache.carbondata.hadoop.CarbonInputSplit;
 import org.apache.carbondata.hadoop.CarbonRecordReader;
 import org.apache.carbondata.hadoop.readsupport.CarbonReadSupport;
 
@@ -53,6 +56,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
+import org.apache.spark.sql.execution.vectorized.ColumnarBatch;
 
 class CarbonHiveRecordReader extends CarbonRecordReader<ArrayWritable>
     implements org.apache.hadoop.mapred.RecordReader<Void, ArrayWritable> {
@@ -60,34 +64,24 @@ class CarbonHiveRecordReader extends CarbonRecordReader<ArrayWritable>
   private ArrayWritable valueObj = null;
   private long recordReaderCounter = 0;
   private int[] columnIds;
+  private  CarbonVectorizedRecordReader vectorReader;
+  private ColumnarBatch columnarBatch;
+  private int batchSize;
 
-  public CarbonHiveRecordReader(QueryModel queryModel, CarbonReadSupport<ArrayWritable> readSupport,
-      InputSplit inputSplit, JobConf jobConf) throws IOException {
+  public CarbonHiveRecordReader(QueryModel queryModel, CarbonDictionaryDecodeReadSupport<ArrayWritable> readSupport,
+      InputSplit inputSplit, JobConf jobConf) throws IOException, QueryExecutionException {
+
     super(queryModel, readSupport);
-    initialize(inputSplit, jobConf);
+    readSupport.initialize(queryModel.getProjectionColumns(), queryModel.getAbsoluteTableIdentifier());
+    CarbonIterator iterator = queryExecutor.execute(queryModel);
+    vectorReader =
+        new CarbonVectorizedRecordReader(queryExecutor, queryModel,
+            (AbstractDetailQueryResultIterator) iterator);
+    readColumns(jobConf);
   }
 
-  private void initialize(InputSplit inputSplit, Configuration conf) throws IOException {
-    // The input split can contain single HDFS block or multiple blocks, so firstly get all the
-    // blocks and then set them in the query model.
-    List<CarbonHiveInputSplit> splitList;
-    if (inputSplit instanceof CarbonHiveInputSplit) {
-      splitList = new ArrayList<>(1);
-      splitList.add((CarbonHiveInputSplit) inputSplit);
-    } else {
-      throw new RuntimeException("unsupported input split type: " + inputSplit);
-    }
-    List<TableBlockInfo> tableBlockInfoList = CarbonHiveInputSplit.createBlocks(splitList);
-    queryModel.setTableBlockInfos(tableBlockInfoList);
-    readSupport
-        .initialize(queryModel.getProjectionColumns(), queryModel.getAbsoluteTableIdentifier());
-    try {
-      carbonIterator = new ChunkRowIterator(queryExecutor.execute(queryModel));
-    } catch (QueryExecutionException e) {
-      throw new IOException(e.getMessage(), e.getCause());
-    }
-    final TypeInfo rowTypeInfo;
-    final List<String> columnNames;
+  private void readColumns(Configuration conf) throws IOException {
+
     List<TypeInfo> columnTypes;
     // Get column names and sort order
     final String colIds = conf.get("hive.io.file.readcolumn.ids");
@@ -116,23 +110,35 @@ class CarbonHiveRecordReader extends CarbonRecordReader<ArrayWritable>
   }
 
   @Override public boolean next(Void aVoid, ArrayWritable value) throws IOException {
-    if (carbonIterator.hasNext()) {
-      Object obj = readSupport.readRow(carbonIterator.next());
-      recordReaderCounter++;
-      Writable[] objArray = (Writable[]) obj;
-      Writable[] sysArray = new Writable[value.get().length];
-      if (columnIds != null && columnIds.length > 0 && objArray.length == columnIds.length) {
-        for (int i = 0; i < columnIds.length; i++) {
-          sysArray[columnIds[i]] = objArray[i];
+    boolean flag = false;
+    try {
+      if(vectorReader.nextKeyValue()){
+        Object vectorBatch = vectorReader.getCurrentValue();
+        if(vectorBatch != null && vectorBatch instanceof ColumnarBatch)
+        {
+          columnarBatch = (ColumnarBatch) vectorBatch;
+          batchSize = columnarBatch.numRows();
+          if(batchSize == 0){
+            close();
+            return false;
+          }
+          else {
+            CarbonDictionaryDecodeReadSupport carbonDictionaryDecodeReadSupport =(CarbonDictionaryDecodeReadSupport) readSupport;
+            carbonDictionaryDecodeReadSupport.readBatches(columnarBatch);
+            flag = true;
+
+          }
         }
-        value.set(sysArray);
-      } else {
-        value.set(objArray);
+
       }
-      return true;
-    } else {
-      return false;
+      else{
+        flag = false;
+      }
+    } catch (InterruptedException e) {
+      e.printStackTrace();
     }
+
+    return flag;
   }
 
   @Override public Void createKey() {
@@ -151,83 +157,5 @@ class CarbonHiveRecordReader extends CarbonRecordReader<ArrayWritable>
     return 0;
   }
 
-  private ArrayWritable createStruct(Object obj, StructObjectInspector inspector)
-      throws SerDeException {
-    List fields = inspector.getAllStructFieldRefs();
-    Writable[] arr = new Writable[fields.size()];
-    for (int i = 0; i < fields.size(); i++) {
-      StructField field = (StructField) fields.get(i);
-      Object subObj = inspector.getStructFieldData(obj, field);
-      ObjectInspector subInspector = field.getFieldObjectInspector();
-      arr[i] = createObject(subObj, subInspector);
-    }
-    return new ArrayWritable(Writable.class, arr);
-  }
 
-  private ArrayWritable createArray(Object obj, ListObjectInspector inspector)
-      throws SerDeException {
-    List sourceArray = inspector.getList(obj);
-    ObjectInspector subInspector = inspector.getListElementObjectInspector();
-    List array = new ArrayList();
-    Iterator iterator;
-    if (sourceArray != null) {
-      for (iterator = sourceArray.iterator(); iterator.hasNext(); ) {
-        Object curObj = iterator.next();
-        Writable newObj = createObject(curObj, subInspector);
-        if (newObj != null) {
-          array.add(newObj);
-        }
-      }
-    }
-    if (array.size() > 0) {
-      ArrayWritable subArray = new ArrayWritable(((Writable) array.get(0)).getClass(),
-          (Writable[]) array.toArray(new Writable[array.size()]));
-
-      return new ArrayWritable(Writable.class, new Writable[] { subArray });
-    }
-    return null;
-  }
-
-  private Writable createPrimitive(Object obj, PrimitiveObjectInspector inspector)
-      throws SerDeException {
-    if (obj == null) {
-      return null;
-    }
-    switch (inspector.getPrimitiveCategory()) {
-      case VOID:
-        return null;
-      case DOUBLE:
-        return new DoubleWritable((double) obj);
-      case INT:
-        return new IntWritable((int) obj);
-      case LONG:
-        return new LongWritable((long) obj);
-      case SHORT:
-        return new ShortWritable((short) obj);
-      case DATE:
-        return new DateWritable(new Date(Long.parseLong(String.valueOf(obj.toString()))));
-      case TIMESTAMP:
-        return new TimestampWritable(new Timestamp((long) obj));
-      case STRING:
-        return new Text(obj.toString());
-      case CHAR:
-        return new Text(obj.toString());
-      case DECIMAL:
-        return new HiveDecimalWritable(
-            HiveDecimal.create((java.math.BigDecimal) obj));
-    }
-    throw new SerDeException("Unknown primitive : " + inspector.getPrimitiveCategory());
-  }
-
-  private Writable createObject(Object obj, ObjectInspector inspector) throws SerDeException {
-    switch (inspector.getCategory()) {
-      case STRUCT:
-        return createStruct(obj, (StructObjectInspector) inspector);
-      case LIST:
-        return createArray(obj, (ListObjectInspector) inspector);
-      case PRIMITIVE:
-        return createPrimitive(obj, (PrimitiveObjectInspector) inspector);
-    }
-    throw new SerDeException("Unknown data type" + inspector.getCategory());
-  }
 }
