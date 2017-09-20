@@ -65,7 +65,7 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
    */
   protected CarbonColumn[] carbonColumns;
 
-  protected Writable[] writableArr = new Writable[500];
+  protected Writable[] writableArr ;
 
   /**
    * This initialization is done inside executor task
@@ -136,10 +136,20 @@ public class CarbonDictionaryDecodeReadSupport<T> implements CarbonReadSupport<T
     }
   }
 
-  public T readBatches(ColumnarBatch columnarBatch) throws IOException {
-    for(int column =0;column<columnarBatch.numRows();column++){
-      writableArr[column] = createWritableObject(columnarBatch.column(column),carbonColumns[column],column);
+  public T readBatches(ColumnarBatch columnarBatch,int numberOfColumns) throws IOException {
+    int numberOfRows = columnarBatch.numRows();
+    writableArr = new Writable[numberOfRows*numberOfColumns];
+    int index =0;
+    for(int row =0;row<numberOfRows;row++){
+    for(int column =0;column<numberOfColumns;column++){
+    writableArr[index] = createWritableObject(columnarBatch.getRow(row).columns()[column],carbonColumns[column],row);
+    index++;
+ }
+
     }
+    /*for(int column =0;column<columnarBatch.numValidRows();column++){
+      writableArr[column] = createWritableObject(columnarBatch.column(column),carbonColumns[column],column);
+    }*/
     return (T)writableArr;
   }
 

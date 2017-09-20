@@ -110,35 +110,34 @@ class CarbonHiveRecordReader extends CarbonRecordReader<ArrayWritable>
   }
 
   @Override public boolean next(Void aVoid, ArrayWritable value) throws IOException {
-    boolean flag = false;
+    boolean isData = true;
     try {
-      if(vectorReader.nextKeyValue()){
+      if (vectorReader.nextKeyValue()) {
         Object vectorBatch = vectorReader.getCurrentValue();
-        if(vectorBatch != null && vectorBatch instanceof ColumnarBatch)
-        {
+        if (vectorBatch != null && vectorBatch instanceof ColumnarBatch) {
           columnarBatch = (ColumnarBatch) vectorBatch;
           batchSize = columnarBatch.numRows();
-          if(batchSize == 0){
+          if (batchSize == 0) {
             close();
-            return false;
+            isData = false;
+          } else {
+            CarbonDictionaryDecodeReadSupport carbonDictionaryDecodeReadSupport = (CarbonDictionaryDecodeReadSupport) readSupport;
+            valueObj.set((Writable[])carbonDictionaryDecodeReadSupport.readBatches(columnarBatch,columnIds.length));
+            isData = true;
           }
-          else {
-            CarbonDictionaryDecodeReadSupport carbonDictionaryDecodeReadSupport =(CarbonDictionaryDecodeReadSupport) readSupport;
-            carbonDictionaryDecodeReadSupport.readBatches(columnarBatch);
-            flag = true;
 
-          }
+        } else {
+          throw new Exception("Unable to get the Carbon Batch");
         }
-
       }
       else{
-        flag = false;
+        isData= false;
       }
-    } catch (InterruptedException e) {
+    }catch (Exception e) {
       e.printStackTrace();
     }
+return isData;
 
-    return flag;
   }
 
   @Override public Void createKey() {

@@ -99,41 +99,34 @@ object HiveExample {
         "ALTER TABLE HIVE_CARBON_EXAMPLE SET LOCATION " +
         s"'file:///$store/default/hive_carbon_example' ")
 
-    val sql = "SELECT * FROM HIVE_CARBON_EXAMPLE"
+    val sql = "SELECT NAME FROM HIVE_CARBON_EXAMPLE"
 
     val resultSet: ResultSet = statement.executeQuery(sql)
 
     var rowsFetched = 0
 
-    while (resultSet.next) {
-      if (rowsFetched == 0) {
-        println("+---+" + "+-------+" + "+--------------+")
-        println("| ID|" + "| NAME |" + "| SALARY        |")
+     def convertResultSetToList(queryResult: ResultSet): List[Map[String, Any]] = {
+      val metadata = queryResult.getMetaData
+      val colNames = (1 to metadata.getColumnCount) map metadata.getColumnName
+      Iterator.continually(buildMapFromQueryResult(queryResult, colNames)).takeWhile(_.isDefined)
+        .map(_.get).toList
+    }
 
-        println("+---+" + "+-------+" + "+--------------+")
-
-        resultId = resultSet.getString("id")
-        resultName = resultSet.getString("name")
-        resultSalary = resultSet.getString("salary")
-
-        println(s"| $resultId |" + s"| $resultName |" + s"| $resultSalary  |")
-        println("+---+" + "+-------+" + "+--------------+")
+    def buildMapFromQueryResult(queryResult: ResultSet,
+        colNames: Seq[String]): Option[Map[String, Any]] = {
+      if (queryResult.next()) {
+        Some(colNames.map(name => name -> queryResult.getObject(name)).toMap)
       }
       else {
-        resultId = resultSet.getString("ID")
-        resultName = resultSet.getString("NAME")
-        resultSalary = resultSet.getString("SALARY")
-
-        println(s"| $resultId |" + s"| $resultName |" + s"| $resultSalary   |")
-        println("+---+" + "+-------+" + "+--------------+")
+        None
       }
-      rowsFetched = rowsFetched + 1
     }
-    println(s"******Total Number Of Rows Fetched ****** $rowsFetched")
-
-    logger.info("Fetching the Individual Columns ")
-
-    // fetching the separate columns
+    convertResultSetToList(resultSet).foreach{
+      map=> map.values.foreach{
+        value => println("******"+value)
+      }
+    }
+ /*   // fetching the separate columns
     var individualColRowsFetched = 0
 
     val resultIndividualCol = statement.executeQuery("SELECT NAME FROM HIVE_CARBON_EXAMPLE")
@@ -190,7 +183,7 @@ object HiveExample {
         println("+---+" + "+-------+" + "+--------------+")
       }
       outOfOrderColFetched = outOfOrderColFetched + 1
-    }
+    }*/
     hiveEmbeddedServer2.stop()
     System.exit(0)
   }
