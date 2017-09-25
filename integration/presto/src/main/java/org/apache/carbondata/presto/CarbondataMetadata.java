@@ -30,6 +30,7 @@ import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
 import org.apache.carbondata.core.metadata.schema.table.column.CarbonDimension;
 import org.apache.carbondata.core.metadata.schema.table.column.CarbonMeasure;
 import org.apache.carbondata.core.metadata.schema.table.column.ColumnSchema;
+import scala.collection.mutable.HashTable;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -89,24 +90,39 @@ public class CarbondataMetadata implements ConnectorMetadata {
   public Map<SchemaTableName, List<ColumnMetadata>> listTableColumns(ConnectorSession session,
       SchemaTablePrefix prefix) {
     requireNonNull(prefix, "SchemaTablePrefix is null");
+    Map<SchemaTableName, List<ColumnMetadata>> hm=new HashMap<>();
+    hm.putAll(listTables(session,prefix));
+    return hm;
 
-    ImmutableMap.Builder<SchemaTableName, List<ColumnMetadata>> columns = ImmutableMap.builder();
+   /* ImmutableMap.Builder<SchemaTableName, List<ColumnMetadata>> columns = ImmutableMap.builder();
     for (SchemaTableName tableName : listTables(session, prefix)) {
       ConnectorTableMetadata tableMetadata = getTableMetadata(tableName);
       if (tableMetadata != null) {
         columns.put(tableName, tableMetadata.getColumns());
       }
     }
-    return columns.build();
+    return columns.build();*/
   }
 
   //if prefix is null. return all tables
   //if prefix is not null, just return this table
-  private List<SchemaTableName> listTables(ConnectorSession session, SchemaTablePrefix prefix) {
+  private Hashtable<SchemaTableName,List<ColumnMetadata>> listTables(ConnectorSession session, SchemaTablePrefix prefix) {
+    Hashtable<SchemaTableName,List<ColumnMetadata>> ht=new Hashtable<>();
     if (prefix.getSchemaName() == null) {
-      return listTables(session, prefix.getSchemaName());
+      //return listTables(session, prefix.getSchemaName());
+
+      List listTable= listTables(session,prefix.getSchemaName());
+      for (Object aListTable : listTable) {
+        ht.put((SchemaTableName) aListTable, getTableMetadata((SchemaTableName) aListTable).getColumns());
+      }
+
     }
-    return ImmutableList.of(new SchemaTableName(prefix.getSchemaName(), prefix.getTableName()));
+    SchemaTableName stn=new SchemaTableName(prefix.getSchemaName(), prefix.getTableName());
+    // ColumnMetadata cm=getTableMetadata(stn);
+
+    ht.put(stn,getTableMetadata(stn).getColumns());
+    return ht;
+    //return ImmutableList.of(new SchemaTableName(prefix.getSchemaName(), prefix.getTableName()));
   }
 
   private ConnectorTableMetadata getTableMetadata(SchemaTableName schemaTableName) {

@@ -22,7 +22,6 @@ import java.util.{Locale, Optional}
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
-
 import com.facebook.presto.Session
 import com.facebook.presto.execution.QueryIdGenerator
 import com.facebook.presto.metadata.SessionPropertyManager
@@ -31,8 +30,10 @@ import com.facebook.presto.spi.security.Identity
 import com.facebook.presto.tests.DistributedQueryRunner
 import com.google.common.collect.ImmutableMap
 import org.slf4j.{Logger, LoggerFactory}
-
 import org.apache.carbondata.presto.CarbondataPlugin
+import scala.concurrent.ExecutionContext.Implicits.global
+
+import scala.concurrent.Future
 
 object PrestoServer {
 
@@ -94,14 +95,16 @@ object PrestoServer {
    * @param query
    * @return
    */
-  def executeQuery(query: String): List[Map[String, Any]] = {
-
+  def executeQuery(query: String): Future[List[Map[String, Any]]] = {
+var result:ResultSet = null
     Try {
       val conn: Connection = createJdbcConnection
       logger.info(s"***** executing the query ***** \n $query")
       val statement = conn.createStatement()
-      val result: ResultSet = statement.executeQuery(query)
-      convertResultSetToList(result)
+      Future {
+        result = statement.executeQuery(query)
+        convertResultSetToList(result)
+      }
     } match {
       case Success(result) => result
       case Failure(jdbcException) => logger
@@ -117,7 +120,7 @@ object PrestoServer {
    */
   private def createJdbcConnection: Connection = {
     val JDBC_DRIVER = "com.facebook.presto.jdbc.PrestoDriver"
-    val DB_URL = "jdbc:presto://localhost:8086/carbondata/testdb"
+    val DB_URL = "jdbc:presto://localhost:8086/carbondata/default"
 
     // The database Credentials
     val USER = "username"

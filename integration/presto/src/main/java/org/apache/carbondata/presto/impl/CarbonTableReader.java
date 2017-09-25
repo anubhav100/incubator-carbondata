@@ -252,6 +252,7 @@ public class CarbonTableReader {
       return parseCarbonMetadata(table);
     }
     throw new TableNotFoundException(schemaTableName);
+
   }
 
   /**
