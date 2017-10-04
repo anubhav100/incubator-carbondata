@@ -36,7 +36,7 @@ object PrestoAllDataTypeTest extends FunSuiteLike with BeforeAndAfterAll with Ap
 
   private val rootPath = new File(this.getClass.getResource("/").getPath
     + "../../../..").getCanonicalPath
-  private val storePath = s"$rootPath/integration/presto/target/store"
+  private val storePath = "/home/anubhav/Documents/carbondata/carbondata/integration/presto/target/store"
 
 
   import org.apache.carbondata.presto.util.CarbonDataStoreCreator
@@ -44,7 +44,7 @@ object PrestoAllDataTypeTest extends FunSuiteLike with BeforeAndAfterAll with Ap
     .createCarbonStore(storePath,
       s"$rootPath/integration/presto/src/test/resources/alldatatype.csv")
   logger.info(s"\nCarbon store is created at location: $storePath")*/
-  PrestoServer.startServer("/home/vinod/Desktop/carbondata/integration/presto/target/store")
+  PrestoServer.startServer(storePath)
 
 
   /*override def afterAll(): Unit = {

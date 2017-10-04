@@ -121,7 +121,7 @@ public class CarbonTableReader {
           }
         }
       }
-      updateSchemaTables();
+      updateSchemaTables(table);
       parseCarbonMetadata(table);
     }
 
@@ -207,7 +207,7 @@ public class CarbonTableReader {
    */
   public CarbonTable getTable(SchemaTableName schemaTableName) {
     try {
-      updateSchemaTables();
+      updateSchemaTables(schemaTableName);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -223,19 +223,22 @@ public class CarbonTableReader {
    * and cache all the table names in this.tableList. Notice that whenever this method
    * is called, it clears this.tableList and populate the list by reading the files.
    */
-  private void updateSchemaTables() {
-    // update logic determine later
-    if (carbonFileList == null) {
-      updateSchemaList();
-    }
-    tableList = new LinkedList<>();
-    for (CarbonFile cf : carbonFileList.listFiles()) {
-      if (!cf.getName().endsWith(".mdt")) {
-        for (CarbonFile table : cf.listFiles()) {
-          tableList.add(new SchemaTableName(cf.getName(), table.getName()));
-        }
+  private void updateSchemaTables(SchemaTableName schemaTableName) {
+// update logic determine later
+      if (carbonFileList == null) {
+          updateSchemaList();
       }
-    }
+      if(!tableList.contains(schemaTableName)) {
+
+// if (cc.isEmpty() || cc.size() != tableList.size()) {
+          for (CarbonFile cf : carbonFileList.listFiles()) {
+              if (!cf.getName().endsWith(".mdt")) {
+                  for (CarbonFile table : cf.listFiles()) {
+                      tableList.add(new SchemaTableName(cf.getName(), table.getName()));
+                  }
+              }
+          }
+      }
   }
 
   /**

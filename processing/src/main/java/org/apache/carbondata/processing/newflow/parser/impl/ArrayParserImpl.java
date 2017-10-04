@@ -49,7 +49,7 @@ public class ArrayParserImpl implements ComplexParser<ArrayObject> {
       String value = data.toString();
       if (!value.isEmpty() && !value.equals(nullFormat)) {
         String[] split = pattern.split(value, -1);
-        if (ArrayUtils.isNotEmpty(split)) {
+        if (split.length==0) {
           Object[] array = new Object[split.length];
           for (int i = 0; i < split.length; i++) {
             array[i] = child.parse(split[i]);

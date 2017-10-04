@@ -51,7 +51,7 @@ public class StructParserImpl implements ComplexParser<StructObject> {
       String value = data.toString();
       if (!value.isEmpty() && !value.equals(nullFormat)) {
         String[] split = pattern.split(value, -1);
-        if (ArrayUtils.isNotEmpty(split)) {
+        if (split.length==0) {
           Object[] array = new Object[children.size()];
           for (int i = 0; i < split.length && i < array.length; i++) {
             array[i] = children.get(i).parse(split[i]);
