@@ -25,11 +25,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.carbondata.common.logging.LogService;
+import org.apache.carbondata.common.logging.LogServiceFactory;
 import org.apache.carbondata.core.datastore.filesystem.CarbonFile;
 import org.apache.carbondata.core.datastore.impl.FileFactory;
+import org.apache.carbondata.core.locks.ZooKeeperLocking;
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier;
 import org.apache.carbondata.core.metadata.CarbonMetadata;
 import org.apache.carbondata.core.metadata.CarbonTableIdentifier;
@@ -73,6 +77,8 @@ import static java.util.Objects.requireNonNull;
  */
 public class CarbonTableReader {
 
+  private static final LogService LOGGER =
+          LogServiceFactory.getLogService(CarbonTableReader.class.getName());
   // default PathFilter, accepts files in carbondata format (with .carbondata extension).
   private static final PathFilter DefaultFilter = new PathFilter() {
     @Override public boolean accept(Path path) {
@@ -84,6 +90,8 @@ public class CarbonTableReader {
    * The names of the tables under the schema (this.carbonFileList).
    */
   private List<SchemaTableName> tableList;
+
+
   /**
    * carbonFileList represents the store path of the schema, which is configured as carbondata-store
    * in the CarbonData catalog file ($PRESTO_HOME$/etc/catalog/carbondata.properties).
@@ -129,6 +137,7 @@ public class CarbonTableReader {
     if (cc.containsKey(table)) {
       return cc.get(table);
     } else {
+      LOGGER.info("Returning NUll Value");
       return null;
     }
   }
@@ -230,6 +239,8 @@ public class CarbonTableReader {
       updateSchemaList();
     }
     if(!tableList.contains(schemaTableName)) {
+
+      LOGGER.info("************Updating The Schema ***********");
       for (CarbonFile cf : carbonFileList.listFiles()) {
         if (!cf.getName().endsWith(".mdt")) {
           for (CarbonFile table : cf.listFiles()) {
@@ -266,7 +277,9 @@ public class CarbonTableReader {
     CarbonTable result = null;
     try {
       CarbonTableCacheModel cache = cc.getOrDefault(table, new CarbonTableCacheModel());
-      if (cache.isValid()) return cache.carbonTable;
+      if (cache.isValid()){
+        LOGGER.info("Cache Is valid Getting The Table");
+        return cache.carbonTable;}
 
       // If table is not previously cached, then:
 
@@ -280,6 +293,8 @@ public class CarbonTableReader {
       cache.carbonTablePath =
           PathFactory.getInstance().getCarbonTablePath(storePath, cache.carbonTableIdentifier, null);
       // cache the table
+      LOGGER.info("Putting The Table Inside CC Map");
+
       cc.put(table, cache);
 
       //Step 2: read the metadata (tableInfo) of the table.

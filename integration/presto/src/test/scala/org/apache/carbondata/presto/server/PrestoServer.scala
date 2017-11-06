@@ -1,3 +1,4 @@
+
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -22,7 +23,6 @@ import java.util.{Locale, Optional}
 
 import scala.collection.JavaConverters._
 import scala.util.{Failure, Success, Try}
-
 import com.facebook.presto.Session
 import com.facebook.presto.execution.QueryIdGenerator
 import com.facebook.presto.metadata.SessionPropertyManager
@@ -31,8 +31,10 @@ import com.facebook.presto.spi.security.Identity
 import com.facebook.presto.tests.DistributedQueryRunner
 import com.google.common.collect.ImmutableMap
 import org.slf4j.{Logger, LoggerFactory}
-
 import org.apache.carbondata.presto.CarbondataPlugin
+import scala.concurrent.ExecutionContext.Implicits.global
+
+import scala.concurrent.Future
 
 object PrestoServer {
 
@@ -48,10 +50,10 @@ object PrestoServer {
 
 
   /**
-   * start the presto server
-   *
-   * @param carbonStorePath the store path of carbon
-   */
+    * start the presto server
+    *
+    * @param carbonStorePath
+    */
   def startServer(carbonStorePath: String) = {
 
     logger.info("======== STARTING PRESTO SERVER ========")
@@ -62,10 +64,10 @@ object PrestoServer {
   }
 
   /**
-   * Instantiates the Presto Server to connect with the Apache CarbonData
-   */
+    * Instantiates the Presto Server to connect with the Apache CarbonData
+    */
   private def createQueryRunner(extraProperties: util.Map[String, String],
-      carbonStorePath: String): DistributedQueryRunner = {
+                                carbonStorePath: String): DistributedQueryRunner = {
     Try {
       queryRunner.installPlugin(new CarbondataPlugin)
       val carbonProperties = ImmutableMap.builder[String, String]
@@ -81,43 +83,45 @@ object PrestoServer {
   }
 
   /**
-   * stop the presto server
-   */
+    * stop the presto server
+    */
   def stopServer(): Unit = {
     queryRunner.close()
     logger.info("***** Stopping The Server *****")
   }
 
   /**
-   * execute the query by establishing the jdbc connection
-   *
-   * @param query
-   * @return
-   */
-  def executeQuery(query: String): List[Map[String, Any]] = {
-
+    * execute the query by establishing the jdbc connection
+    *
+    * @param query
+    * @return
+    */
+  def executeQuery(query: String): Future[List[Map[String, Any]]] = {
+    var result: ResultSet = null
     Try {
       val conn: Connection = createJdbcConnection
       logger.info(s"***** executing the query ***** \n $query")
       val statement = conn.createStatement()
-      val result: ResultSet = statement.executeQuery(query)
-      convertResultSetToList(result)
+      Future {
+        result = statement.executeQuery(query)
+        convertResultSetToList(result)
+      }
     } match {
       case Success(result) => result
       case Failure(jdbcException) => logger
-        .error(s"exception occurs${ jdbcException.getMessage } \n query failed $query")
+        .error(s"exception occurs${jdbcException.getMessage} \n query failed $query")
         throw jdbcException
     }
   }
 
   /**
-   * Creates a JDBC Client to connect CarbonData to Presto
-   *
-   * @return
-   */
+    * Creates a JDBC Client to connect CarbonData to Presto
+    *
+    * @return
+    */
   private def createJdbcConnection: Connection = {
     val JDBC_DRIVER = "com.facebook.presto.jdbc.PrestoDriver"
-    val DB_URL = "jdbc:presto://localhost:8086/carbondata/testdb"
+    val DB_URL = "jdbc:presto://46.4.88.233:8086/carbondata/default"
 
     // The database Credentials
     val USER = "username"
@@ -130,12 +134,12 @@ object PrestoServer {
   }
 
   /**
-   * convert result set into scala list of map
-   * each map represents a row
-   *
-   * @param queryResult
-   * @return
-   */
+    * convert result set into scala list of map
+    * each map represents a row
+    *
+    * @param queryResult
+    * @return
+    */
   private def convertResultSetToList(queryResult: ResultSet): List[Map[String, Any]] = {
     val metadata = queryResult.getMetaData
     val colNames = (1 to metadata.getColumnCount) map metadata.getColumnName
@@ -144,7 +148,7 @@ object PrestoServer {
   }
 
   private def buildMapFromQueryResult(queryResult: ResultSet,
-      colNames: Seq[String]): Option[Map[String, Any]] = {
+                                      colNames: Seq[String]): Option[Map[String, Any]] = {
     if (queryResult.next()) {
       Some(colNames.map(name => name -> queryResult.getObject(name)).toMap)
     }
@@ -154,8 +158,8 @@ object PrestoServer {
   }
 
   /**
-   * CreateSession will create a new session in the Server to connect and execute queries.
-   */
+    * CreateSession will create a new session in the Server to connect and execute queries.
+    */
   private def createSession: Session = {
     logger.info("\n Creating The Presto Server Session")
     Session.builder(new SessionPropertyManager)
@@ -166,5 +170,4 @@ object PrestoServer {
       .setRemoteUserAddress("address")
       .setUserAgent("agent").build
   }
-
 }
