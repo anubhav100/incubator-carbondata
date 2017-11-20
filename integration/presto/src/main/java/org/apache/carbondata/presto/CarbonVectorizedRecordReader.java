@@ -170,33 +170,37 @@ class CarbonVectorizedRecordReader extends AbstractRecordReader<Object> {
       QueryDimension dim = queryDimension.get(i);
       if (dim.getDimension().hasEncoding(Encoding.DIRECT_DICTIONARY)) {
         DirectDictionaryGenerator generator = DirectDictionaryKeyGeneratorFactory
-            .getDirectDictionaryGenerator(dim.getDimension().getDataType());
+                .getDirectDictionaryGenerator(dim.getDimension().getDataType());
         fields[dim.getQueryOrder()] = new StructField(dim.getColumnName(),
-           generator.getReturnType(), true);
+                generator.getReturnType(), true);
       } else if (!dim.getDimension().hasEncoding(Encoding.DICTIONARY)) {
         fields[dim.getQueryOrder()] = new StructField(dim.getColumnName(),
-            dim.getDimension().getDataType(), true);
+                dim.getDimension().getDataType(), true);
       } else if (dim.getDimension().isComplex()) {
         fields[dim.getQueryOrder()] = new StructField(dim.getColumnName(),
-           dim.getDimension().getDataType(), true);
+                dim.getDimension().getDataType(), true);
       } else {
         fields[dim.getQueryOrder()] = new StructField(dim.getColumnName(),
-            DataTypes.INT, true);
+                DataTypes.INT, true);
       }
     }
 
     for (int i = 0; i < queryMeasures.size(); i++) {
       QueryMeasure msr = queryMeasures.get(i);
       DataType dataType = msr.getMeasure().getDataType();
-      if (dataType == DataTypes.SHORT || dataType == DataTypes.INT || dataType == DataTypes.LONG) {
+      if (dataType == DataTypes.SHORT || dataType == DataTypes.INT || dataType == DataTypes.LONG || dataType == DataTypes.BOOLEAN) {
         fields[msr.getQueryOrder()] = new StructField(msr.getColumnName(),
-            msr.getMeasure().getDataType(), true);
+                msr.getMeasure().getDataType(), true);
       } else if (DataTypes.isDecimal(dataType)) {
         fields[msr.getQueryOrder()] = new StructField(msr.getColumnName(),
-           msr.getMeasure().getDataType(), true);
-      } else {
+                msr.getMeasure().getDataType(), true);
+      } else if(dataType == DataTypes.BOOLEAN) {
         fields[msr.getQueryOrder()] = new StructField(msr.getColumnName(),
-            DataTypes.DOUBLE, true);
+                msr.getMeasure().getDataType(), true);
+      }
+      else {
+        fields[msr.getQueryOrder()] = new StructField(msr.getColumnName(),
+                DataTypes.DOUBLE, true);
       }
     }
 
@@ -208,6 +212,7 @@ class CarbonVectorizedRecordReader extends AbstractRecordReader<Object> {
     }
     carbonColumnarBatch = new CarbonColumnarBatch(vectors, columnarBatch.capacity(), filteredRows);
   }
+
 
 
   private CarbonVectorBatch resultBatch() {

@@ -32,6 +32,7 @@ import io.airlift.slice.Slice;
 public final class StreamReaders {
   /**
    * This function select Stream readers based on Type and use it.
+   *
    * @param type
    * @param dictionary
    * @return StreamReader
@@ -39,7 +40,7 @@ public final class StreamReaders {
   public static StreamReader createStreamReader(Type type, SliceArrayBlock dictionary) {
     Class<?> javaType = type.getJavaType();
     if (javaType == long.class) {
-      if(type instanceof IntegerType || type instanceof DateType) {
+      if (type instanceof IntegerType || type instanceof DateType) {
         return new IntegerStreamReader();
       } else if (type instanceof DecimalType) {
         return new DecimalSliceStreamReader();
@@ -53,18 +54,20 @@ public final class StreamReaders {
       return new DoubleStreamReader();
     } else if (javaType == Slice.class) {
       if (type instanceof DecimalType) {
-       return new DecimalSliceStreamReader();
+        return new DecimalSliceStreamReader();
       } else {
-        if(dictionary != null) {
+        if (dictionary != null) {
           return new SliceStreamReader(true, dictionary);
         } else {
-        return new SliceStreamReader();
-      }
+          return new SliceStreamReader();
+        }
 
       }
+    } else if (javaType == boolean.class) {
+      return new BooleanStreamReader();
     } else {
       return new ObjectStreamReader();
     }
-  }
 
+  }
 }
