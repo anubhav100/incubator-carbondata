@@ -20,10 +20,16 @@ package org.apache.carbondata.presto.readers;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Objects;
+
+import org.apache.carbondata.core.cache.dictionary.Dictionary;
+import org.apache.carbondata.core.metadata.datatype.DataTypes;
+import org.apache.carbondata.core.util.DataTypeUtil;
 
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.block.BlockBuilderStatus;
+import com.facebook.presto.spi.block.SliceArrayBlock;
 import com.facebook.presto.spi.type.DecimalType;
 import com.facebook.presto.spi.type.Decimals;
 import com.facebook.presto.spi.type.Type;
@@ -42,11 +48,19 @@ import static java.math.RoundingMode.HALF_UP;
  */
 public class DecimalSliceStreamReader  extends AbstractStreamReader {
 
+  private Dictionary dictionaryValues;
+  private boolean isDictionary;
+
 
   private final char[] buffer = new char[100];
 
   public DecimalSliceStreamReader() {
 
+  }
+
+  public DecimalSliceStreamReader(boolean isDictionary, Dictionary dictionaryValues) {
+    this.dictionaryValues = dictionaryValues;
+    this.isDictionary = isDictionary;
   }
 
   /**
@@ -202,19 +216,52 @@ public class DecimalSliceStreamReader  extends AbstractStreamReader {
 
   private void populateShortDecimalVector(Type type, int numberOfRows, BlockBuilder builder,
       int scale, int precision) {
-    for (int i = 0; i < numberOfRows; i++) {
-      BigDecimal decimalValue = (BigDecimal)columnVector.getData(i);
-      long rescaledDecimal = Decimals.rescale(decimalValue.unscaledValue().longValue(),
-          decimalValue.scale(), scale);
-      type.writeLong(builder, rescaledDecimal);
+    if (isDictionary) {
+      for (int i = 0; i < numberOfRows; i++) {
+        int value = (Integer) columnVector.getData(i);
+        DecimalType decimalType = (DecimalType) type;
+        Object data = DataTypeUtil
+            .getDataBasedOnDataType(dictionaryValues.getDictionaryValueForKey(value), DataTypes.createDecimalType(decimalType.getPrecision(), decimalType.getScale()));
+        if(Objects.isNull(data)) {
+          builder.appendNull();
+        } else {
+          BigDecimal decimalValue = (BigDecimal) data;
+          long rescaledDecimal =
+              Decimals.rescale(decimalValue.unscaledValue().longValue(), decimalValue.scale(), scale);
+          type.writeLong(builder, rescaledDecimal);
+        }
+      }
+    } else {
+      for (int i = 0; i < numberOfRows; i++) {
+        BigDecimal decimalValue = (BigDecimal) columnVector.getData(i);
+        long rescaledDecimal =
+            Decimals.rescale(decimalValue.unscaledValue().longValue(), decimalValue.scale(), scale);
+        type.writeLong(builder, rescaledDecimal);
+      }
     }
   }
 
   private void populateLongDecimalVector(Type type, int numberOfRows, BlockBuilder builder,
       int scale, int precision) {
-    for (int i = 0; i < numberOfRows; i++) {
-      Slice slice = getSlice((BigDecimal)columnVector.getData(i), type);
-      type.writeSlice(builder, parseSlice((DecimalType) type, slice, 0, slice.length()));
+    if (isDictionary) {
+      for (int i = 0; i < numberOfRows; i++) {
+        int value = (Integer) columnVector.getData(i);
+        DecimalType decimalType = (DecimalType) type;
+        Object data = DataTypeUtil
+            .getDataBasedOnDataType(dictionaryValues.getDictionaryValueForKey(value), DataTypes.createDecimalType(decimalType.getPrecision(), decimalType.getScale()));
+        if(Objects.isNull(data)) {
+          builder.appendNull();
+        } else {
+          BigDecimal decimalValue = (BigDecimal) data;
+          Slice slice = getSlice(decimalValue, type);
+          type.writeSlice(builder, parseSlice((DecimalType) type, slice, 0, slice.length()));
+        }
+      }
+    } else {
+      for (int i = 0; i < numberOfRows; i++) {
+        Slice slice = getSlice((BigDecimal) columnVector.getData(i), type);
+        type.writeSlice(builder, parseSlice((DecimalType) type, slice, 0, slice.length()));
+      }
     }
   }
 
