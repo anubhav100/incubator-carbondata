@@ -40,11 +40,10 @@ object CarbonSessionExample {
          | decimalField DECIMAL(18,2),
          | dateField DATE,
          | charField CHAR(5),
-         | floatField FLOAT,
-         | complexData ARRAY<STRING>
+         | floatField FLOAT
          | )
          | STORED BY 'carbondata'
-         | TBLPROPERTIES('SORT_COLUMNS'='', 'DICTIONARY_INCLUDE'='dateField, charField')
+         | TBLPROPERTIES('SORT_COLUMNS'='', 'DICTIONARY_INCLUDE'='intField,shortField')
        """.stripMargin)
 
     val rootPath = new File(this.getClass.getResource("/").getPath
@@ -60,7 +59,7 @@ object CarbonSessionExample {
        """.stripMargin)
     // scalastyle:on
 
-    spark.sql(
+   /* spark.sql(
       s"""
         | SELECT *
         | FROM carbon_table
@@ -112,10 +111,10 @@ object CarbonSessionExample {
          | SELECT *
          | FROM carbon_table
          | WHERE stringField = 'spark' and floatField > 2.8
-       """.stripMargin).show()
+       """.stripMargin).show()*/
 
     // Drop table
-    spark.sql("DROP TABLE IF EXISTS carbon_table")
+   // spark.sql("DROP TABLE IF EXISTS carbon_table")
 
     spark.stop()
   }

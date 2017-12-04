@@ -32,21 +32,26 @@ class PrestoAllDataTypeTest extends FunSuiteLike with BeforeAndAfterAll {
 
   private val rootPath = new File(this.getClass.getResource("/").getPath
                                   + "../../../..").getCanonicalPath
-  private val storePath = s"$rootPath/integration/presto/target/store"
+  private val storePath = s"/home/anubhav/Documents/carbondata/carbondata/examples/spark2/target/store"
 
-  override def beforeAll: Unit = {
+  /*override def beforeAll: Unit = {
     import org.apache.carbondata.presto.util.CarbonDataStoreCreator
     CarbonDataStoreCreator
       .createCarbonStore(storePath,
         s"$rootPath/integration/presto/src/test/resources/alldatatype.csv")
     logger.info(s"\nCarbon store is created at location: $storePath")
     PrestoServer.startServer(storePath)
-  }
+  }*/
 
   override def afterAll(): Unit = {
     PrestoServer.stopServer()
   }
+test("blah blah"){
+  PrestoServer.startServer(storePath)
 
+  println("******************"+PrestoServer
+    .executeQuery("SELECT intfield FROM CARBON_TABLE"))
+}
   test("test the result for count(*) in presto") {
     val actualResult: List[Map[String, Any]] = PrestoServer
       .executeQuery("SELECT COUNT(*) AS RESULT FROM TESTDB.TESTTABLE ")

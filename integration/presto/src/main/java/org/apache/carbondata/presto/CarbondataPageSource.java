@@ -232,7 +232,7 @@ class CarbondataPageSource implements ConnectorPageSource {
     StreamReader[] readers = new StreamReader[types.size()];
     for (int i = 0; i < types.size(); i++) {
       readers[i] =
-          StreamReaders.createStreamReader(types.get(i), readSupport.getSliceArrayBlock(i));
+          StreamReaders.createStreamReader(types.get(i), readSupport.getSliceArrayBlock(i),i,readSupport.getDictionaries());
     }
     return readers;
   }

@@ -117,7 +117,7 @@ object PrestoServer {
    */
   private def createJdbcConnection: Connection = {
     val JDBC_DRIVER = "com.facebook.presto.jdbc.PrestoDriver"
-    val DB_URL = "jdbc:presto://localhost:8086/carbondata/testdb"
+    val DB_URL = "jdbc:presto://localhost:8086/carbondata/default"
 
     val properties = new Properties
     // The database Credentials

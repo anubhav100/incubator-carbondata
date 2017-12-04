@@ -24,6 +24,9 @@ import com.facebook.presto.spi.type.SmallintType;
 import com.facebook.presto.spi.type.TimestampType;
 import com.facebook.presto.spi.type.Type;
 import io.airlift.slice.Slice;
+import org.apache.carbondata.core.cache.dictionary.Dictionary;
+
+import java.lang.reflect.Array;
 
 /**
  * This class creates streamReader
@@ -36,34 +39,29 @@ public final class StreamReaders {
    * @param dictionary
    * @return StreamReader
    */
-  public static StreamReader createStreamReader(Type type, SliceArrayBlock dictionary) {
+  public static StreamReader createStreamReader(Type type, SliceArrayBlock dictionary, int index,Dictionary[] dictionaryValues ) {
     Class<?> javaType = type.getJavaType();
-    if (javaType == long.class) {
-      if(type instanceof IntegerType || type instanceof DateType) {
-        return new IntegerStreamReader();
+    if (dictionary != null) {
+      if (type instanceof IntegerType || type instanceof DateType) {
+        return new IntegerStreamReader(true, dictionaryValues[index]);
       } else if (type instanceof DecimalType) {
         return new DecimalSliceStreamReader();
       } else if (type instanceof SmallintType) {
-        return new ShortStreamReader();
-      } else if (type instanceof TimestampType) {
-        return new TimestampStreamReader();
+        return new ShortStreamReader(true,dictionaryValues[index]);
       }
       return new LongStreamReader();
     } else if (javaType == double.class) {
       return new DoubleStreamReader();
+
     } else if (javaType == Slice.class) {
       if (type instanceof DecimalType) {
-       return new DecimalSliceStreamReader();
-      } else {
-        if(dictionary != null) {
-          return new SliceStreamReader(true, dictionary);
-        } else {
-        return new SliceStreamReader();
+        return new DecimalSliceStreamReader();
       }
-
+      else{
+        return new SliceStreamReader(true,dictionary);
       }
     } else {
-      return new ObjectStreamReader();
+    return new IntegerStreamReader();
     }
   }
 

@@ -17,64 +17,81 @@
 
 package org.apache.carbondata.presto.readers;
 
-import java.io.IOException;
-
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.block.BlockBuilderStatus;
 import com.facebook.presto.spi.type.Type;
+import org.apache.carbondata.core.cache.dictionary.Dictionary;
+import org.apache.carbondata.core.metadata.datatype.DataTypes;
+import org.apache.carbondata.core.util.DataTypeUtil;
+
+import java.io.IOException;
 
 public class IntegerStreamReader extends AbstractStreamReader {
 
+   private Dictionary dictionaryValues;
+   private boolean isDictionary;
 
-  public IntegerStreamReader( ) {
+   public IntegerStreamReader(){
 
-  }
-
-  public Block readBlock(Type type)
-      throws IOException
-  {
-    int numberOfRows = 0;
-    BlockBuilder builder = null;
-    if(isVectorReader) {
-      numberOfRows = batchSize;
-      builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
-      if (columnVector != null) {
-        if(columnVector.anyNullsSet()) {
-          handleNullInVector(type, numberOfRows, builder);
-        }
-        else {
-          populateVector(type, numberOfRows, builder);
-        }
-      }
-
-    } else {
-      numberOfRows = streamData.length;
-      builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
-      if (streamData != null) {
-        for(int i = 0; i < numberOfRows ; i++ ){
-          type.writeLong(builder, ((Integer)streamData[i]).longValue());
-        }
-      }
+   }
+    public IntegerStreamReader(boolean isDictionary, Dictionary dictionaryValues) {
+        this.dictionaryValues = dictionaryValues;
+        this.isDictionary = isDictionary;
     }
 
-    return builder.build();
-  }
+    public Block readBlock(Type type)
+            throws IOException {
+        int numberOfRows = 0;
+        BlockBuilder builder = null;
+        if (isVectorReader) {
+            numberOfRows = batchSize;
+            builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
+            if (columnVector != null) {
+                if (columnVector.anyNullsSet()) {
+                    handleNullInVector(type, numberOfRows, builder);
+                } else {
+                    populateVector(type, numberOfRows, builder);
+                }
+            }
 
-  private void handleNullInVector(Type type, int numberOfRows, BlockBuilder builder) {
-    for (int i = 0; i < numberOfRows; i++) {
-      if (columnVector.isNullAt(i)) {
-        builder.appendNull();
-      } else {
-        type.writeLong(builder, ((Integer) columnVector.getData(i)).longValue());
-      }
+        } else {
+            numberOfRows = streamData.length;
+            builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
+            if (streamData != null) {
+                for (int i = 0; i < numberOfRows; i++) {
+                    type.writeLong(builder, ((Integer) streamData[i]).longValue());
+                }
+            }
+        }
+
+        return builder.build();
     }
-  }
 
-  private void populateVector(Type type, int numberOfRows, BlockBuilder builder) {
-    for (int i = 0; i < numberOfRows; i++) {
-        type.writeLong(builder,  (Integer) columnVector.getData(i));
-      }
-  }
+    private void handleNullInVector(Type type, int numberOfRows, BlockBuilder builder) {
+        for (int i = 0; i < numberOfRows; i++) {
+            if (columnVector.isNullAt(i)) {
+                builder.appendNull();
+            } else {
+                type.writeLong(builder, ((Integer) columnVector.getData(i)).longValue());
+            }
+        }
+    }
 
+    private void populateVector(Type type, int numberOfRows, BlockBuilder builder) {
+        if (isDictionary) {
+            for (int i = 0; i < numberOfRows; i++) {
+                int value = (Integer) columnVector.getData(i);
+                type.writeLong(builder, (Integer) DataTypeUtil
+                        .getDataBasedOnDataType(dictionaryValues
+                                .getDictionaryValueForKey(value), DataTypes.INT));
+            }
+        } else {
+            for (int i = 0; i < numberOfRows; i++) {
+                int value = (Integer) columnVector.getData(i);
+                type.writeLong(builder, (long) value);
+            }
+        }
+
+    }
 }

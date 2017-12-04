@@ -33,7 +33,7 @@ import org.apache.carbondata.hadoop.readsupport.CarbonReadSupport
  * This is the class to decode dictionary encoded column data back to its original value.
  */
 class CarbonDictionaryDecodeReadSupport[T] extends CarbonReadSupport[T] {
-  private var dictionaries: Array[Dictionary] = _
+  var dictionaries: Array[Dictionary] = _
   private var dataTypes: Array[DataType] = _
   private var dictionarySliceArray: Array[SliceArrayBlock] = _
 
@@ -128,6 +128,9 @@ class CarbonDictionaryDecodeReadSupport[T] extends CarbonReadSupport[T] {
     dictionarySliceArray(columnNo)
   }
 
+  def getDictionaries(): Array[Dictionary] ={
+    dictionaries
+  }
   /**
    * to book keep the dictionary cache or update access count for each
    * column involved during decode, to facilitate LRU cache policy if memory
