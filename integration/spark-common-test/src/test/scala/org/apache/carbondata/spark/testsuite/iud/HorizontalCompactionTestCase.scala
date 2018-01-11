@@ -350,30 +350,8 @@ class HorizontalCompactionTestCase extends QueryTest with BeforeAndAfterAll {
     )
     sql("""drop table dest2""")
   }
-test("test the compaction after alter command") // As per bug Carbondata-2016
-   {
-  sql("CREATE TABLE CUSTOMER1 ( C_CUSTKEY INT , C_NAME STRING , C_ADDRESS STRING , C_NATIONKEY INT , C_PHONE STRING , C_ACCTBAL DECIMAL(15,2) , C_MKTSEGMENT STRING , C_COMMENT STRING) stored by 'carbondata'")
 
-     try {
-       sql(
-         "insert into customer1 values(1,'vandana','noida',1,'123456789',45987.78,'hello','comment')")
 
-       sql(
-         "insert into customer1 values(2,'vandana','noida',2,'123456789',487.78,'hello','comment')")
-       sql(
-         " insert into customer1 values(3,'geetika','delhi',3,'123456789',487897.78,'hello','comment')")
-       sql(
-         "insert into customer1 values(4,'sangeeta','delhi',3,'123456789',48789.78,'hello','comment')")
-       sql(
-         "alter table customer1 add columns (intfield int) TBLPROPERTIES ('DEFAULT.VALUE.intfield'='10')")
-       sql("show segments for table customer1").show()
-       sql("alter table customer1 compact 'minor' ").show()
-       assert(true)
-     }
-     catch {
-       case _:Exception => assert(false)
-     }
-}
   override def afterAll {
     CarbonProperties.getInstance()
       .addProperty(CarbonCommonConstants.ENABLE_VECTOR_READER , "true")
@@ -382,8 +360,6 @@ test("test the compaction after alter command") // As per bug Carbondata-2016
     CarbonProperties.getInstance()
       .addProperty(CarbonCommonConstants.isHorizontalCompactionEnabled , "true")
     sql("""drop table if exists t_carbn01""")
-    sql("""drop table if exists customer1""")
-
   }
 
 }
