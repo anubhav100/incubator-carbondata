@@ -270,7 +270,7 @@ public class SortDataRows {
             } else if (dataType == DataTypes.SHORT) {
               stream.writeShort((Short) value);
             } else if (dataType == DataTypes.INT) {
-              stream.writeInt((Integer) value);
+              stream.writeInt(Integer.parseInt(value.toString()));
             } else if (dataType == DataTypes.LONG) {
               stream.writeLong((Long) value);
             } else if (dataType == DataTypes.DOUBLE) {
