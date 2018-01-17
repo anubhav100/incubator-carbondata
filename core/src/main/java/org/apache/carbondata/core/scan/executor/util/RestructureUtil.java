@@ -43,6 +43,7 @@ import org.apache.carbondata.core.util.DataTypeUtil;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.spark.sql.types.Decimal;
 import org.apache.spark.unsafe.types.UTF8String;
+import scala.tools.cmd.gen.AnyVals;
 
 /**
  * Utility class for restructuring
@@ -287,10 +288,19 @@ public class RestructureUtil {
     if (!isDefaultValueNull(defaultValue)) {
       String value = null;
       DataType dataType = columnSchema.getDataType();
-      if (dataType == DataTypes.SHORT || dataType == DataTypes.INT || dataType == DataTypes.LONG) {
+      if (dataType == DataTypes.SHORT) {
+        value = new String(defaultValue, Charset.forName(CarbonCommonConstants.DEFAULT_CHARSET));
+        measureDefaultValue = new Short(value);
+      }
+     else if (dataType == DataTypes.LONG) {
         value = new String(defaultValue, Charset.forName(CarbonCommonConstants.DEFAULT_CHARSET));
         measureDefaultValue = Long.parseLong(value);
-      } else if (DataTypes.isDecimal(dataType)) {
+      }
+     else if (dataType == DataTypes.INT) {
+        value = new String(defaultValue, Charset.forName(CarbonCommonConstants.DEFAULT_CHARSET));
+        measureDefaultValue = Integer.parseInt(value);
+      }
+      else if (DataTypes.isDecimal(dataType)) {
         BigDecimal decimal = DataTypeUtil.byteToBigDecimal(defaultValue);
         if (columnSchema.getScale() > decimal.scale()) {
           decimal = decimal.setScale(columnSchema.getScale(), RoundingMode.HALF_UP);

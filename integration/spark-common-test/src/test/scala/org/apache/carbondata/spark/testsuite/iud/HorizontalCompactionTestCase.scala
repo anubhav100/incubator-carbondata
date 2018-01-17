@@ -360,18 +360,39 @@ class HorizontalCompactionTestCase extends QueryTest with BeforeAndAfterAll {
 
       sql(
         "insert into customer1 values(2,'vandana','noida',2,'123456789',487.78,'hello','comment')")
+
       sql(
         " insert into customer1 values(3,'geetika','delhi',3,'123456789',487897.78,'hello','comment')")
+
       sql(
         "insert into customer1 values(4,'sangeeta','delhi',3,'123456789',48789.78,'hello','comment')")
+
+      sql(
+        "alter table customer1 add columns (shortfield short) TBLPROPERTIES ('DEFAULT.VALUE.shortfield'='10')")
+
       sql(
         "alter table customer1 add columns (intfield int) TBLPROPERTIES ('DEFAULT.VALUE.intfield'='10')")
-      sql("show segments for table customer1").show()
+
+      sql(
+        "alter table customer1 add columns (longfield bigint) TBLPROPERTIES ('DEFAULT.VALUE.longfield'='10')")
+
       sql("alter table customer1 compact 'minor' ").show()
-      assert(true)
+
+     val dfOfSegments = sql("show segments for table customer1")
+
+      dfOfSegments.show()
+
+      assert(dfOfSegments.collect().toList
+        .count(row => row.get(1).asInstanceOf[String].equals("Compacted"))==4)
+
+      assert(dfOfSegments.collect().toList
+        .exists(row => row.get(1).asInstanceOf[String].equals("Success") &&
+                       row.get(0).asInstanceOf[String].equals("0.1")))
     }
     catch {
-      case _:Exception => assert(false)
+      case exception:Exception =>
+        exception.printStackTrace()
+        assert(false)
     }
   }
   override def afterAll {
