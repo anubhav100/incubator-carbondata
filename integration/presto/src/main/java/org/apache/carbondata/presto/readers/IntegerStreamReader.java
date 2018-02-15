@@ -27,7 +27,10 @@ import org.apache.carbondata.core.util.DataTypeUtil;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.block.BlockBuilderStatus;
+import com.facebook.presto.spi.block.IntArrayBlock;
+import com.facebook.presto.spi.block.VariableWidthBlock;
 import com.facebook.presto.spi.type.Type;
+import io.airlift.slice.Slices;
 
 public class IntegerStreamReader extends AbstractStreamReader {
 
@@ -56,7 +59,9 @@ public class IntegerStreamReader extends AbstractStreamReader {
           if (columnVector.anyNullsSet()) {
             handleNullInVector(type, numberOfRows, builder);
           } else {
-            populateVector(type, numberOfRows, builder);
+          return  new IntArrayBlock(batchSize, columnVector.getIsNullVector(), columnVector.getInts());
+
+//            populateVector(type, numberOfRows, builder);
           }
         }
       }
@@ -79,13 +84,6 @@ public class IntegerStreamReader extends AbstractStreamReader {
       } else {
         type.writeLong(builder, ((Integer) columnVector.getData(i)).longValue());
       }
-    }
-  }
-
-  private void populateVector(Type type, int numberOfRows, BlockBuilder builder) {
-    for (int i = 0; i < numberOfRows; i++) {
-      Integer value = (Integer) columnVector.getData(i);
-      type.writeLong(builder, value.longValue());
     }
   }
 

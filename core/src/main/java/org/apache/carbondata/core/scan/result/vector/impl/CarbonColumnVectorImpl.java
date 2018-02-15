@@ -65,6 +65,10 @@ public class CarbonColumnVectorImpl implements CarbonColumnVector {
    */
   protected boolean anyNullsSet;
 
+  public int[] getInts() {
+    return ints;
+  }
+
   public int[] getOffsetVector() {
     return offsetVector;
   }
@@ -173,8 +177,8 @@ public class CarbonColumnVectorImpl implements CarbonColumnVector {
       byteStr = new byte[value.length];
     }
     offsetVector[rowId + 1] = offsetVector[rowId] + length;
-    bytes[rowId] = new byte[length];
-    System.arraycopy(value, offset, bytes[rowId], 0, length);
+//    bytes[rowId] = new byte[length];
+//    System.arraycopy(value, offset, bytes[rowId], 0, length);
     System.arraycopy(value, offset, byteStr, offsetVector[rowId], length);
   }
 
@@ -242,6 +246,7 @@ public class CarbonColumnVectorImpl implements CarbonColumnVector {
       Arrays.fill(shorts, (short) 0);
     } else if (dataType == DataTypes.INT) {
       Arrays.fill(ints, 0);
+      Arrays.fill(isNullVector, false);
     } else if (dataType == DataTypes.LONG || dataType == DataTypes.TIMESTAMP) {
       Arrays.fill(longs, 0);
     } else if (dataType == DataTypes.FLOAT) {
@@ -284,4 +289,5 @@ public class CarbonColumnVectorImpl implements CarbonColumnVector {
    * as an optimization to prevent setting nulls.
    */
   public final boolean anyNullsSet() { return anyNullsSet; }
+
 }
