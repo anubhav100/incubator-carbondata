@@ -65,6 +65,18 @@ public class CarbonColumnVectorImpl implements CarbonColumnVector {
    */
   protected boolean anyNullsSet;
 
+  public long[] getLongData() {
+    return longs;
+  }
+
+  public short[] getShortData() {
+    return shorts;
+  }
+
+  public byte[] getbyteArr() {
+    return byteArr;
+  }
+
   public int[] getInts() {
     return ints;
   }
@@ -240,13 +252,13 @@ public class CarbonColumnVectorImpl implements CarbonColumnVector {
 
   @Override public void reset() {
     nullBytes.clear();
+    Arrays.fill(isNullVector, false);
     if (dataType == DataTypes.BOOLEAN || dataType == DataTypes.BYTE) {
       Arrays.fill(byteArr, (byte) 0);
     } else if (dataType == DataTypes.SHORT) {
       Arrays.fill(shorts, (short) 0);
     } else if (dataType == DataTypes.INT) {
       Arrays.fill(ints, 0);
-      Arrays.fill(isNullVector, false);
     } else if (dataType == DataTypes.LONG || dataType == DataTypes.TIMESTAMP) {
       Arrays.fill(longs, 0);
     } else if (dataType == DataTypes.FLOAT) {
@@ -259,7 +271,6 @@ public class CarbonColumnVectorImpl implements CarbonColumnVector {
       Arrays.fill(bytes, null);
       byteStr = null;
       Arrays.fill(offsetVector, 0);
-      Arrays.fill(isNullVector, false);
     } else {
       Arrays.fill(data, null);
     }

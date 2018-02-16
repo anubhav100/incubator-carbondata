@@ -21,12 +21,11 @@ import java.io.IOException;
 
 import org.apache.carbondata.core.cache.dictionary.Dictionary;
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
-import org.apache.carbondata.core.metadata.datatype.DataTypes;
-import org.apache.carbondata.core.util.DataTypeUtil;
 
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.block.BlockBuilderStatus;
+import com.facebook.presto.spi.block.ByteArrayBlock;
 import com.facebook.presto.spi.type.Type;
 
 public class BooleanStreamReader extends AbstractStreamReader {
@@ -53,11 +52,7 @@ public class BooleanStreamReader extends AbstractStreamReader {
         if (isDictionary) {
           populateDictionaryVector(type, numberOfRows, builder);
         } else {
-          if (columnVector.anyNullsSet()) {
-            handleNullInVector(type, numberOfRows, builder);
-          } else {
-            populateVector(type, numberOfRows, builder);
-          }
+            return new ByteArrayBlock(batchSize, columnVector.getIsNullVector(), columnVector.getbyteArr());
         }
       }
     } else {
@@ -71,22 +66,6 @@ public class BooleanStreamReader extends AbstractStreamReader {
     }
 
     return builder.build();
-  }
-
-  private void handleNullInVector(Type type, int numberOfRows, BlockBuilder builder) {
-    for (int i = 0; i < numberOfRows; i++) {
-      if (columnVector.isNullAt(i)) {
-        builder.appendNull();
-      } else {
-        type.writeBoolean(builder, byteToBoolean(columnVector.getData(i)));
-      }
-    }
-  }
-
-  private void populateVector(Type type, int numberOfRows, BlockBuilder builder) {
-      for (int i = 0; i < numberOfRows; i++) {
-        type.writeBoolean(builder, byteToBoolean(columnVector.getData(i)));
-      }
   }
 
   private void populateDictionaryVector(Type type, int numberOfRows, BlockBuilder builder) {

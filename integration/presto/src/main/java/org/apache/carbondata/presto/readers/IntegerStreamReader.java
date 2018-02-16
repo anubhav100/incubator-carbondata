@@ -56,13 +56,7 @@ public class IntegerStreamReader extends AbstractStreamReader {
         if (isDictionary) {
           populateDictionaryVector(type, numberOfRows, builder);
         } else {
-          if (columnVector.anyNullsSet()) {
-            handleNullInVector(type, numberOfRows, builder);
-          } else {
           return  new IntArrayBlock(batchSize, columnVector.getIsNullVector(), columnVector.getInts());
-
-//            populateVector(type, numberOfRows, builder);
-          }
         }
       }
     } else {
@@ -75,16 +69,6 @@ public class IntegerStreamReader extends AbstractStreamReader {
       }
     }
     return builder.build();
-  }
-
-  private void handleNullInVector(Type type, int numberOfRows, BlockBuilder builder) {
-    for (int i = 0; i < numberOfRows; i++) {
-      if (columnVector.isNullAt(i)) {
-        builder.appendNull();
-      } else {
-        type.writeLong(builder, ((Integer) columnVector.getData(i)).longValue());
-      }
-    }
   }
 
   private void populateDictionaryVector(Type type, int numberOfRows, BlockBuilder builder) {
