@@ -47,10 +47,9 @@ public class BooleanStreamReader extends AbstractStreamReader {
     BlockBuilder builder = null;
     if (isVectorReader) {
       numberOfRows = batchSize;
-      builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
       if (columnVector != null) {
         if (isDictionary) {
-          populateDictionaryVector(type, numberOfRows, builder);
+          return populateDictionaryVector(type, numberOfRows);
         } else {
             return new ByteArrayBlock(batchSize, columnVector.getIsNullVector(), columnVector.getbyteArr());
         }
@@ -63,12 +62,13 @@ public class BooleanStreamReader extends AbstractStreamReader {
           type.writeBoolean(builder, byteToBoolean(streamData[i]));
         }
       }
+      return builder.build();
     }
-
-    return builder.build();
+    return null;
   }
 
-  private void populateDictionaryVector(Type type, int numberOfRows, BlockBuilder builder) {
+  private Block populateDictionaryVector(Type type, int numberOfRows) {
+    BlockBuilder builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
     for (int i = 0; i < numberOfRows; i++) {
       int dictKey = (int)columnVector.getData(i);
       String dictionaryValue = dictionary.getDictionaryValueForKey(dictKey);
@@ -78,6 +78,7 @@ public class BooleanStreamReader extends AbstractStreamReader {
           type.writeBoolean(builder, Boolean.parseBoolean(dictionaryValue));
       }
     }
+    return builder.build();
   }
 
   private Boolean byteToBoolean(Object value){

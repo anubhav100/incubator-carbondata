@@ -47,10 +47,9 @@ public class LongStreamReader extends AbstractStreamReader {
     BlockBuilder builder;
     if (isVectorReader) {
       numberOfRows = batchSize;
-      builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
       if (columnVector != null) {
         if (isDictionary) {
-          populateDictionaryVector(type, numberOfRows, builder);
+          return populateDictionaryVector(type, numberOfRows);
         }
         else {
           return new LongArrayBlock(batchSize, columnVector.getIsNullVector(), columnVector.getLongData());
@@ -64,11 +63,14 @@ public class LongStreamReader extends AbstractStreamReader {
           type.writeLong(builder, (Long) streamData[i]);
         }
       }
+      return builder.build();
     }
-    return builder.build();
+    return null;
   }
 
-  private void populateDictionaryVector(Type type, int numberOfRows, BlockBuilder builder) {
+  private Block populateDictionaryVector(Type type, int numberOfRows) {
+
+    BlockBuilder builder =  type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
     for (int i = 0; i < numberOfRows; i++) {
       int dictKey = (int) columnVector.getData(i);
       String dictionaryValue =dictionary.getDictionaryValueForKey(dictKey);
@@ -84,6 +86,7 @@ public class LongStreamReader extends AbstractStreamReader {
         }
       }
     }
+    return builder.build();
   }
   private Long parseLong(String rawValue) {
     try {

@@ -68,7 +68,7 @@ public class SliceStreamReader extends AbstractStreamReader {
           }
           return new DictionaryBlock(batchSize, dictionarySliceArrayBlock, values);
         } else {
-          return new VariableWidthBlock(batchSize, Slices.wrappedBuffer((byte[])columnVector.getStringData()), columnVector.getOffsetVector(), columnVector.getIsNullVector());
+          return new VariableWidthBlock(batchSize, Slices.wrappedBuffer(columnVector.getStringData()), columnVector.getOffsetVector(), columnVector.getIsNullVector());
         }
       }
     } else {

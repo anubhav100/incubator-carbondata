@@ -47,10 +47,9 @@ public class ShortStreamReader extends AbstractStreamReader {
     BlockBuilder builder;
     if (isVectorReader) {
       numberOfRows = batchSize;
-      builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
       if (columnVector != null) {
         if (isDictionary) {
-          populateDictionaryVector(type, numberOfRows, builder);
+          return populateDictionaryVector(type, numberOfRows);
         } else {
             return new ShortArrayBlock(batchSize, columnVector.getIsNullVector(), columnVector.getShortData());
         }
@@ -63,11 +62,13 @@ public class ShortStreamReader extends AbstractStreamReader {
           type.writeLong(builder, (Short) streamData[i]);
         }
       }
+      return builder.build();
     }
-    return builder.build();
+    return null;
   }
 
-  private void populateDictionaryVector(Type type, int numberOfRows, BlockBuilder builder) {
+  private Block populateDictionaryVector(Type type, int numberOfRows) {
+    BlockBuilder builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
     for (int i = 0; i < numberOfRows; i++) {
       int dictKey = (int) columnVector.getData(i);
       String dictionaryValue =dictionary.getDictionaryValueForKey(dictKey);
@@ -83,6 +84,7 @@ public class ShortStreamReader extends AbstractStreamReader {
         }
       }
     }
+     return builder.build();
   }
 
   private Short parseShort(String rawValue) {

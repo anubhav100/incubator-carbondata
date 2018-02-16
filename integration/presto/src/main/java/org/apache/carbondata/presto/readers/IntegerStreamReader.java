@@ -21,16 +21,12 @@ import java.io.IOException;
 
 import org.apache.carbondata.core.cache.dictionary.Dictionary;
 import org.apache.carbondata.core.constants.CarbonCommonConstants;
-import org.apache.carbondata.core.metadata.datatype.DataTypes;
-import org.apache.carbondata.core.util.DataTypeUtil;
 
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.block.BlockBuilderStatus;
 import com.facebook.presto.spi.block.IntArrayBlock;
-import com.facebook.presto.spi.block.VariableWidthBlock;
 import com.facebook.presto.spi.type.Type;
-import io.airlift.slice.Slices;
 
 public class IntegerStreamReader extends AbstractStreamReader {
 
@@ -51,10 +47,9 @@ public class IntegerStreamReader extends AbstractStreamReader {
     BlockBuilder builder;
     if (isVectorReader) {
       numberOfRows = batchSize;
-      builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
       if (columnVector != null) {
         if (isDictionary) {
-          populateDictionaryVector(type, numberOfRows, builder);
+          return populateDictionaryVector(type, numberOfRows);
         } else {
           return  new IntArrayBlock(batchSize, columnVector.getIsNullVector(), columnVector.getInts());
         }
@@ -67,11 +62,13 @@ public class IntegerStreamReader extends AbstractStreamReader {
           type.writeLong(builder, ((Integer) streamData[i]).longValue());
         }
       }
+      return builder.build();
     }
-    return builder.build();
+    return null;
   }
 
-  private void populateDictionaryVector(Type type, int numberOfRows, BlockBuilder builder) {
+  private Block populateDictionaryVector(Type type, int numberOfRows) {
+    BlockBuilder builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
     for (int i = 0; i < numberOfRows; i++) {
       int dictKey = (int) columnVector.getData(i);
       String dictionaryValue = dictionary.getDictionaryValueForKey(dictKey);
@@ -86,6 +83,7 @@ public class IntegerStreamReader extends AbstractStreamReader {
         }
       }
     }
+    return builder.build();
   }
   private Integer parseInteger(String rawValue) {
     try {

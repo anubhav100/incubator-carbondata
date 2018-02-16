@@ -246,7 +246,7 @@ public class CarbonColumnVectorImpl implements CarbonColumnVector {
     }
   }
 
-  public Object getStringData() {
+  public byte[] getStringData() {
     return byteStr;
   }
 
