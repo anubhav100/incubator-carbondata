@@ -30,7 +30,7 @@ import com.facebook.presto.spi.type.Type;
 
 public class IntegerStreamReader extends AbstractStreamReader {
 
-  private Dictionary dictionary;
+  private Dictionary dictionaryValues;
   private boolean isDictionary;
 
   public IntegerStreamReader() {
@@ -38,7 +38,7 @@ public class IntegerStreamReader extends AbstractStreamReader {
   }
 
   public IntegerStreamReader(boolean isDictionary, Dictionary dictionary) {
-    this.dictionary = dictionary;
+    this.dictionaryValues = dictionary;
     this.isDictionary = isDictionary;
   }
 
@@ -71,7 +71,7 @@ public class IntegerStreamReader extends AbstractStreamReader {
     BlockBuilder builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
     for (int i = 0; i < numberOfRows; i++) {
       int dictKey = (int) columnVector.getData(i);
-      String dictionaryValue = dictionary.getDictionaryValueForKey(dictKey);
+      String dictionaryValue = dictionaryValues.getDictionaryValueForKey(dictKey);
       if (dictionaryValue.equals(CarbonCommonConstants.MEMBER_DEFAULT_VAL)) {
         builder.appendNull();
       } else {

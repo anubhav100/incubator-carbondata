@@ -63,7 +63,7 @@ public class CarbonColumnVectorImpl implements CarbonColumnVector {
    * True if there is at least one NULL byte set. This is an optimization for the writer, to skip
    * having to clear NULL bits.
    */
-  protected boolean anyNullsSet;
+  private boolean anyNullsSet;
 
   public long[] getLongData() {
     return longs;
