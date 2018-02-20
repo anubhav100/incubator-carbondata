@@ -68,6 +68,9 @@ public class CarbonColumnVectorImpl implements CarbonColumnVector {
   public long[] getLongData() {
     return longs;
   }
+  public double[] getDoubleData() {
+    return doubles;
+  }
 
   public short[] getShortData() {
     return shorts;

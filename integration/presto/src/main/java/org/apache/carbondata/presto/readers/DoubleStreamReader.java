@@ -27,7 +27,11 @@ import org.apache.carbondata.core.util.DataTypeUtil;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.block.BlockBuilderStatus;
+import com.facebook.presto.spi.block.IntArrayBlock;
+import com.facebook.presto.spi.block.LongArrayBlock;
 import com.facebook.presto.spi.type.Type;
+import com.google.common.primitives.Longs;
+import org.weakref.jmx.internal.guava.primitives.Doubles;
 
 /**
  * Class for Reading the Double value and setting it in Block
@@ -68,6 +72,9 @@ public class DoubleStreamReader extends AbstractStreamReader {
           } else {
             populateVector(type, numberOfRows, builder);
           }
+         return  new LongArrayBlock(batchSize, columnVector.getIsNullVector(), Longs.toArray(
+             Doubles.asList(columnVector.getDoubleData())));
+
         }
       }
     } else {
