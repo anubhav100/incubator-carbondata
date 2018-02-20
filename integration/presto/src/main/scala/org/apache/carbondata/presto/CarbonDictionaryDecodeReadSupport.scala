@@ -35,7 +35,6 @@ import org.apache.carbondata.hadoop.readsupport.CarbonReadSupport
  */
 class CarbonDictionaryDecodeReadSupport[T] extends CarbonReadSupport[T] {
   private var dictionaries: Array[Dictionary] = _
-  private var dataTypes: Array[DataType] = _
   private var dictionarySliceArray: Array[SliceArrayBlock] = _
 
   /**
@@ -48,7 +47,6 @@ class CarbonDictionaryDecodeReadSupport[T] extends CarbonReadSupport[T] {
   override def initialize(carbonColumns: Array[CarbonColumn], carbonTable: CarbonTable) {
 
     dictionaries = new Array[Dictionary](carbonColumns.length)
-    dataTypes = new Array[DataType](carbonColumns.length)
     dictionarySliceArray = new Array[SliceArrayBlock](carbonColumns.length)
 
     carbonColumns.zipWithIndex.foreach {
@@ -59,14 +57,14 @@ class CarbonDictionaryDecodeReadSupport[T] extends CarbonReadSupport[T] {
         val forwardDictionaryCache: Cache[DictionaryColumnUniqueIdentifier, Dictionary] =
           cacheProvider
             .createCache(CacheType.FORWARD_DICTIONARY)
-        dataTypes(index) = carbonColumn.getDataType
+        val dataType = carbonColumn.getDataType
         val dictionaryPath: String = carbonTable.getTableInfo.getFactTable.getTableProperties
           .get(CarbonCommonConstants.DICTIONARY_PATH)
         dictionaries(index) = forwardDictionaryCache
           .get(new DictionaryColumnUniqueIdentifier(carbonTable.getAbsoluteTableIdentifier,
-            carbonColumn.getColumnIdentifier, dataTypes(index), dictionaryPath))
+            carbonColumn.getColumnIdentifier, dataType, dictionaryPath))
         // in case of string data type create dictionarySliceArray same as that of presto code
-        if (dataTypes(index).equals(DataTypes.STRING)) {
+        if (dataType.equals(DataTypes.STRING)) {
           dictionarySliceArray(index) = createSliceArrayBlock(dictionaries(index))
         }
       }

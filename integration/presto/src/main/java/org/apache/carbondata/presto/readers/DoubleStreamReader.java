@@ -27,11 +27,7 @@ import org.apache.carbondata.core.util.DataTypeUtil;
 import com.facebook.presto.spi.block.Block;
 import com.facebook.presto.spi.block.BlockBuilder;
 import com.facebook.presto.spi.block.BlockBuilderStatus;
-import com.facebook.presto.spi.block.IntArrayBlock;
-import com.facebook.presto.spi.block.LongArrayBlock;
 import com.facebook.presto.spi.type.Type;
-import com.google.common.primitives.Longs;
-import org.weakref.jmx.internal.guava.primitives.Doubles;
 
 /**
  * Class for Reading the Double value and setting it in Block
@@ -64,17 +60,14 @@ public class DoubleStreamReader extends AbstractStreamReader {
       numberOfRows = batchSize;
       builder = type.createBlockBuilder(new BlockBuilderStatus(), numberOfRows);
       if (columnVector != null) {
-        if (isDictionary) {
-          populateDictionaryVector(type, numberOfRows, builder);
+        if(isDictionary) {
+          return populateDictionaryVector(type, numberOfRows, builder);
         } else {
           if (columnVector.anyNullsSet()) {
             handleNullInVector(type, numberOfRows, builder);
           } else {
             populateVector(type, numberOfRows, builder);
           }
-         return  new LongArrayBlock(batchSize, columnVector.getIsNullVector(), Longs.toArray(
-             Doubles.asList(columnVector.getDoubleData())));
-
         }
       }
     } else {
@@ -106,25 +99,27 @@ public class DoubleStreamReader extends AbstractStreamReader {
     }
   }
 
-  private void populateDictionaryVector(Type type, int numberOfRows, BlockBuilder builder) {
+  private Block populateDictionaryVector(Type type, int numberOfRows,BlockBuilder builder ) {
     for (int i = 0; i < numberOfRows; i++) {
       int dictKey = (int) columnVector.getData(i);
-      String dictionaryValue = dictionary.getDictionaryValueForKey(dictKey);
+      String dictionaryValue =dictionary.getDictionaryValueForKey(dictKey);
       if (dictionaryValue.equals(CarbonCommonConstants.MEMBER_DEFAULT_VAL)) {
         builder.appendNull();
       } else {
         Double doubleValue = parseDouble(dictionaryValue);
-        if (doubleValue != null) {
-          type.writeDouble(builder, doubleValue);
-        } else {
+        if(doubleValue!=null) {
+          type.writeDouble(builder,doubleValue);
+        }
+        else{
           builder.appendNull();
         }
       }
     }
+    return builder.build();
   }
   private Double parseDouble(String rawValue) {
     try {
-      return Double.valueOf(rawValue);
+      return Double.parseDouble(rawValue);
     } catch (NumberFormatException numberFormatException) {
       return null;
     }
