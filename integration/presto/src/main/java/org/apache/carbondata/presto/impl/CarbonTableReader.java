@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -33,24 +34,33 @@ import java.util.stream.Stream;
 import org.apache.carbondata.core.datamap.DataMapStoreManager;
 import org.apache.carbondata.core.datastore.filesystem.CarbonFile;
 import org.apache.carbondata.core.datastore.impl.FileFactory;
+import org.apache.carbondata.core.indexstore.PartitionSpec;
 import org.apache.carbondata.core.metadata.AbsoluteTableIdentifier;
 import org.apache.carbondata.core.metadata.CarbonMetadata;
 import org.apache.carbondata.core.metadata.CarbonTableIdentifier;
+import org.apache.carbondata.core.metadata.SegmentFileStore;
 import org.apache.carbondata.core.metadata.converter.SchemaConverter;
 import org.apache.carbondata.core.metadata.converter.ThriftWrapperSchemaConverterImpl;
+import org.apache.carbondata.core.metadata.schema.PartitionInfo;
+import org.apache.carbondata.core.metadata.schema.partition.PartitionType;
 import org.apache.carbondata.core.metadata.schema.table.CarbonTable;
 import org.apache.carbondata.core.metadata.schema.table.TableInfo;
 import org.apache.carbondata.core.reader.ThriftReader;
 import org.apache.carbondata.core.scan.expression.Expression;
+import org.apache.carbondata.core.statusmanager.LoadMetadataDetails;
+import org.apache.carbondata.core.statusmanager.SegmentStatusManager;
 import org.apache.carbondata.core.util.path.CarbonTablePath;
 import org.apache.carbondata.hadoop.CarbonInputSplit;
 import org.apache.carbondata.hadoop.api.CarbonTableInputFormat;
+import org.apache.carbondata.presto.PrestoFilterUtil;
 
 import com.facebook.presto.hadoop.$internal.com.google.gson.Gson;
 import com.facebook.presto.hadoop.$internal.io.netty.util.internal.ConcurrentSet;
+import com.facebook.presto.spi.ColumnHandle;
 import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.TableNotFoundException;
 import com.facebook.presto.spi.classloader.ThreadContextClassLoader;
+import com.facebook.presto.spi.predicate.TupleDomain;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
@@ -99,6 +109,8 @@ public class CarbonTableReader {
    * metadata of a table is only read from file system once.
    */
   private AtomicReference<HashMap<SchemaTableName, CarbonTableCacheModel>> carbonCache;
+
+  private LoadMetadataDetails loadMetadataDetails[];
 
   @Inject public CarbonTableReader(CarbonTableConfig config) {
     this.config = requireNonNull(config, "CarbonTableConfig is null");
@@ -204,11 +216,11 @@ public class CarbonTableReader {
    */
   private Set<String> updateTableList(String schemaName) {
     List<CarbonFile> schema =
-            Stream.of(carbonFileList.listFiles()).filter(a -> schemaName.equals(a.getName()))
-                    .collect(Collectors.toList());
+        Stream.of(carbonFileList.listFiles()).filter(a -> schemaName.equals(a.getName()))
+            .collect(Collectors.toList());
     if (schema.size() > 0) {
       return Stream.of((schema.get(0)).listFiles()).map(CarbonFile::getName)
-              .collect(Collectors.toSet());
+          .collect(Collectors.toSet());
     } else return ImmutableSet.of();
   }
 
@@ -244,8 +256,8 @@ public class CarbonTableReader {
     try {
       if (isKeyExists
           && !FileFactory.isFileExist(
-              CarbonTablePath.getSchemaFilePath(
-                  carbonCache.get().get(schemaTableName).carbonTable.getTablePath()), fileType)) {
+          CarbonTablePath.getSchemaFilePath(
+              carbonCache.get().get(schemaTableName).carbonTable.getTablePath()), fileType)) {
         removeTableFromCache(schemaTableName);
         throw new TableNotFoundException(schemaTableName);
       }
@@ -315,8 +327,8 @@ public class CarbonTableReader {
       // Step 1: get store path of the table and cache it.
       // create table identifier. the table id is randomly generated.
       CarbonTableIdentifier carbonTableIdentifier =
-              new CarbonTableIdentifier(table.getSchemaName(), table.getTableName(),
-                      UUID.randomUUID().toString());
+          new CarbonTableIdentifier(table.getSchemaName(), table.getTableName(),
+              UUID.randomUUID().toString());
       String storePath = config.getStorePath();
       String tablePath = storePath + "/" + carbonTableIdentifier.getDatabaseName() + "/"
           + carbonTableIdentifier.getTableName();
@@ -331,10 +343,10 @@ public class CarbonTableReader {
         }
       };
       ThriftReader thriftReader =
-              new ThriftReader(CarbonTablePath.getSchemaFilePath(tablePath), createTBase);
+          new ThriftReader(CarbonTablePath.getSchemaFilePath(tablePath), createTBase);
       thriftReader.open();
       org.apache.carbondata.format.TableInfo tableInfo =
-              (org.apache.carbondata.format.TableInfo) thriftReader.read();
+          (org.apache.carbondata.format.TableInfo) thriftReader.read();
       thriftReader.close();
 
 
@@ -362,9 +374,8 @@ public class CarbonTableReader {
     return result;
   }
 
-
   public List<CarbonLocalInputSplit> getInputSplits2(CarbonTableCacheModel tableCacheModel,
-                                                     Expression filters)  {
+      Expression filters,TupleDomain<ColumnHandle> constraints)  {
     List<CarbonLocalInputSplit> result = new ArrayList<>();
 
     CarbonTable carbonTable = tableCacheModel.carbonTable;
@@ -376,11 +387,25 @@ public class CarbonTableReader {
     config.set(CarbonTableInputFormat.DATABASE_NAME, carbonTable.getDatabaseName());
     config.set(CarbonTableInputFormat.TABLE_NAME, carbonTable.getTableName());
 
+    JobConf jobConf = new JobConf(config);
+    List<PartitionSpec> filteredPartitions = new ArrayList();
+
+    try {
+      loadMetadataDetails= SegmentStatusManager
+          .readTableStatusFile(CarbonTablePath.getTableStatusFilePath(carbonTable.getTablePath()));
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+
+    PartitionInfo partitionInfo = carbonTable.getPartitionInfo(carbonTable.getTableName());
+
+    if(partitionInfo!=null && partitionInfo.getPartitionType()== PartitionType.NATIVE_HIVE) {
+      filteredPartitions = findRequiredPartitions(constraints, carbonTable,loadMetadataDetails);
+    }
     try {
       CarbonTableInputFormat.setTableInfo(config, tableInfo);
       CarbonTableInputFormat carbonTableInputFormat =
-              createInputFormat(config, carbonTable.getAbsoluteTableIdentifier(), filters);
-      JobConf jobConf = new JobConf(config);
+          createInputFormat(jobConf, carbonTable.getAbsoluteTableIdentifier(), filters,filteredPartitions);
       Job job = Job.getInstance(jobConf);
       List<InputSplit> splits = carbonTableInputFormat.getSplits(job);
       CarbonInputSplit carbonInputSplit = null;
@@ -389,11 +414,11 @@ public class CarbonTableReader {
         for (InputSplit inputSplit : splits) {
           carbonInputSplit = (CarbonInputSplit) inputSplit;
           result.add(new CarbonLocalInputSplit(carbonInputSplit.getSegmentId(),
-                  carbonInputSplit.getPath().toString(), carbonInputSplit.getStart(),
-                  carbonInputSplit.getLength(), Arrays.asList(carbonInputSplit.getLocations()),
-                  carbonInputSplit.getNumberOfBlocklets(), carbonInputSplit.getVersion().number(),
-                  carbonInputSplit.getDeleteDeltaFiles(),
-                  gson.toJson(carbonInputSplit.getDetailInfo())));
+              carbonInputSplit.getPath().toString(), carbonInputSplit.getStart(),
+              carbonInputSplit.getLength(), Arrays.asList(carbonInputSplit.getLocations()),
+              carbonInputSplit.getNumberOfBlocklets(), carbonInputSplit.getVersion().number(),
+              carbonInputSplit.getDeleteDeltaFiles(),
+              gson.toJson(carbonInputSplit.getDetailInfo())));
         }
       }
 
@@ -403,15 +428,56 @@ public class CarbonTableReader {
 
     return result;
   }
+  /**
+   * @param constraints
+   * @param carbonTable
+   * @throws IOException
+   */
+  private List<PartitionSpec> findRequiredPartitions(TupleDomain<ColumnHandle> constraints, CarbonTable carbonTable,
+      LoadMetadataDetails[]loadMetadataDetails)  {
+    Set<PartitionSpec> partitionSpecs = new HashSet<>();
+    List<PartitionSpec> prunePartitions = new ArrayList();
+
+    for (LoadMetadataDetails loadMetadataDetail : loadMetadataDetails) {
+      SegmentFileStore segmentFileStore = null;
+      try {
+        segmentFileStore =
+            new SegmentFileStore(carbonTable.getTablePath(), loadMetadataDetail.getSegmentFile());
+        partitionSpecs.addAll(segmentFileStore.getPartitionSpecs());
+
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+
+    List<String> partitionValuesFromExpression =
+        PrestoFilterUtil.getPartitionFilters(carbonTable, constraints);
+
+    List<List<String>> partitionSpecNamesList = partitionSpecs.stream().map(
+        PartitionSpec::getPartitions).collect(Collectors.toList());
+
+    List<PartitionSpec> partitionSpecsList = new ArrayList(partitionSpecs);
+
+    for (int i = 0; i < partitionSpecNamesList.size(); i++) {
+      List<String> partitionSpecNames = partitionSpecNamesList.get(i);
+      if (partitionSpecNames.containsAll(partitionValuesFromExpression)) {
+        prunePartitions
+            .add(partitionSpecsList.get(i));
+      }
+    }
+    return prunePartitions;
+  }
 
   private CarbonTableInputFormat<Object>  createInputFormat( Configuration conf,
-       AbsoluteTableIdentifier identifier, Expression filterExpression)
-          throws IOException {
+      AbsoluteTableIdentifier identifier, Expression filterExpression, List<PartitionSpec> filteredPartitions)
+      throws IOException {
     CarbonTableInputFormat format = new CarbonTableInputFormat<Object>();
     CarbonTableInputFormat.setTablePath(conf,
-            identifier.appendWithLocalPrefix(identifier.getTablePath()));
+        identifier.appendWithLocalPrefix(identifier.getTablePath()));
     CarbonTableInputFormat.setFilterPredicates(conf, filterExpression);
-
+    if(filteredPartitions.size() != 0) {
+      CarbonTableInputFormat.setPartitionsToPrune(conf, new ArrayList<>(filteredPartitions));
+    }
     return format;
   }
 
