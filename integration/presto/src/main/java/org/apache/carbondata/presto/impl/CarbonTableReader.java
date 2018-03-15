@@ -126,6 +126,8 @@ public class CarbonTableReader {
 
   private  LoadMetadataDetails[] loadMetadataDetails;
 
+  private  PartitionInfo partitionInfo;
+
   @Inject public CarbonTableReader(CarbonTableConfig config) {
     this.config = requireNonNull(config, "CarbonTableConfig is null");
     this.carbonCache = new AtomicReference(new HashMap());
@@ -411,34 +413,37 @@ public class CarbonTableReader {
       loadMetadataDetails = SegmentStatusManager
           .readTableStatusFile(CarbonTablePath.getTableStatusFilePath(carbonTable.getTablePath()));
 
-      Set<PartitionSpec> partitionSpecs = new HashSet<>();
-      for(LoadMetadataDetails loadMetadataDetail: loadMetadataDetails) {
-        SegmentFileStore segmentFileStore = new SegmentFileStore(carbonTable.getTablePath(), loadMetadataDetail.getSegmentFile());
-        partitionSpecs.addAll(segmentFileStore.getPartitionSpecs());
+      partitionInfo = carbonTable.getPartitionInfo(carbonTable.getTableName());
+
+      if(partitionInfo!=null && partitionInfo.getPartitionType()==PartitionType.NATIVE_HIVE) {
+        Set<PartitionSpec> partitionSpecs = new HashSet<>();
+
+        for (LoadMetadataDetails loadMetadataDetail : loadMetadataDetails) {
+          SegmentFileStore segmentFileStore =
+              new SegmentFileStore(carbonTable.getTablePath(), loadMetadataDetail.getSegmentFile());
+          partitionSpecs.addAll(segmentFileStore.getPartitionSpecs());
+        }
+
+        List<String> partitionValuesFromExpression =
+            PrestoFilterUtil.getPartitionFilters(carbonTable, constraints);
+
+        List<String> partitionsNames =
+            partitionSpecs.stream().map(PartitionSpec::getPartitions).collect(toList()).stream().flatMap(Collection::stream).collect(Collectors.toList());
+        List<PartitionSpec> partitionSpecsList = new ArrayList(partitionSpecs);
+
+        List<PartitionSpec> filteredPartitions = new ArrayList();
+
+        for (String partitionValue : partitionValuesFromExpression) {
+          int index = partitionsNames.indexOf(partitionValue);
+          if (index != -1) {
+            filteredPartitions.add(partitionSpecsList.get(index));
+
+          }
+        }
+        CarbonTableInputFormat.setPartitionsToPrune(jobConf, new ArrayList<>(filteredPartitions));
+
       }
 
-      List<String> partitionValues = PrestoFilterUtil.getPartitionFilters(carbonTable, constraints);
-
-      List<String> partitions =
-          partitionSpecs.parallelStream().map(PartitionSpec::getPartitions).collect(toList()).stream().flatMap(Collection::stream).collect(Collectors.toList());
-      List<PartitionSpec> partitionSpecs2 = new ArrayList(partitionSpecs);
-
-      List<PartitionSpec> partitionSpecsUpdated = new ArrayList();
-
-
-      for(int i =0;i<partitions.size();i++){
-    if(partitions.get(i).contains(partitionValues.get(i)))
-    {
-     partitionSpecsUpdated.add(partitionSpecs2.get(i));
-    }
-    //partitionSpecs.toArray()
-    System.out.println("*******"+partitions.get(i));
-  }
-
-
-      if (partitionSpecs != null) {
-        CarbonTableInputFormat.setPartitionsToPrune(jobConf, new ArrayList<>(partitionSpecsUpdated));
-      }
       Job job = Job.getInstance(jobConf);
 
 
@@ -542,7 +547,6 @@ public class CarbonTableReader {
     Expression filter = carbonTableInputFormat.getFilterPredicates(job.getConfiguration());
     TableProvider tableProvider = new SingleTableProvider(carbonTable);
     // this will be null in case of corrupt schema file.
-    PartitionInfo partitionInfo = carbonTable.getPartitionInfo(carbonTable.getTableName());
     CarbonInputFormatUtil.processFilterExpression(filter, carbonTable, null, null);
 
     // prune partitions for filter query on partition table
