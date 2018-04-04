@@ -375,7 +375,7 @@ public class CarbonTableReader {
   }
 
   public List<CarbonLocalInputSplit> getInputSplits2(CarbonTableCacheModel tableCacheModel,
-      Expression filters,TupleDomain<ColumnHandle> constraints)  {
+      Expression filters, TupleDomain<ColumnHandle> constraints)  {
     List<CarbonLocalInputSplit> result = new ArrayList<>();
 
     CarbonTable carbonTable = tableCacheModel.carbonTable;
@@ -428,7 +428,8 @@ public class CarbonTableReader {
 
     return result;
   }
-  /**
+
+  /** Returns list of partition specs to query based on the domain constraints
    * @param constraints
    * @param carbonTable
    * @throws IOException

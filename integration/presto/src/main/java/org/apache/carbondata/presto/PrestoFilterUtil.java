@@ -101,16 +101,14 @@ public class PrestoFilterUtil {
   }
 
   /**
-   * return partition filters using domain constraints
+   * Return partition filters using domain constraints
    * @param carbonTable
    * @param originalConstraint
    * @return
    */
   public static List<String> getPartitionFilters(CarbonTable carbonTable, TupleDomain<ColumnHandle> originalConstraint) {
     List<ColumnSchema> columnSchemas = carbonTable.getPartitionInfo().getColumnSchemaList();
-
     List<String> filter = new ArrayList<>();
-
     for (ColumnHandle columnHandle : originalConstraint.getDomains().get().keySet()) {
       CarbondataColumnHandle carbondataColumnHandle = (CarbondataColumnHandle) columnHandle;
       List<ColumnSchema> partitionedColumnSchema = columnSchemas.stream().filter(
@@ -122,7 +120,7 @@ public class PrestoFilterUtil {
     return filter;
   }
 
-  /**
+  /** Returns list of partition key and values using domain constraints
    * @param originalConstraint
    * @param carbonDataColumnHandle
    */
@@ -338,7 +336,6 @@ public class PrestoFilterUtil {
 
     return rawdata;
   }
-
 
   /**
    * get the filters from key
